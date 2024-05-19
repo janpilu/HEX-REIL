@@ -26,3 +26,5 @@ agent.train(100)
 
 print("Saving model")
 agent.save(model_path)
+
+agent.evaluate(1000)

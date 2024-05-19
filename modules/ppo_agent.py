@@ -19,10 +19,10 @@ class PPOAgent:
         self.model.set_env(self.env)
 
     def evaluate(self, steps):
-        obs = self.env.reset()
+        obs, *vals = self.env.reset()
         for i in range(steps):
             action, _states = self.model.predict(obs)
-            obs, rewards, dones, info = self.env.step(action)
+            obs, rewards, dones, info, *vals = self.env.step(action)
             self.env.render()
 
     def get_action(self, board, action_set):
