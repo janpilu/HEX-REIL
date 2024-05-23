@@ -4,7 +4,7 @@ from modules.hex_env import HexEnv
 
 board_size = 7
 model = "ppo"
-model_path = f"models/{model}_{board_size}x{board_size}"
+model_path = f"models/{board_size}x{board_size}/{model}"  # Add timestamp
 model_file_path = f"{model_path}.zip"
 
 agent = PPOAgent()
@@ -22,9 +22,16 @@ else:
     agent.init_model()
 
 print("Training model")
-agent.train(100)
+agent.train(100000)
 
 print("Saving model")
 agent.save(model_path)
 
 agent.evaluate(1000)
+
+## TODOS:
+# Timestamp,
+# evaluate models after training,
+# only better models are saved,
+# sample action selection from previous models,
+# extrend step function to allow for multiple games to be played
