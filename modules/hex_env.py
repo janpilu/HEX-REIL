@@ -7,7 +7,7 @@ from fhtw_hex.hex_engine import hexPosition
 class HexEnv(gym.Env):
     metadata = {"render.modes": ["human"]}
 
-    def __init__(self, opponent_policy, size=7):
+    def __init__(self, opponent_policy, size=5):
         super(HexEnv, self).__init__()
         self.hex = hexPosition(size=size)
         self.size = size
@@ -15,6 +15,9 @@ class HexEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=-1, high=1, shape=(size, size), dtype=np.int8
         )
+        self.opponent_policy = opponent_policy
+
+    def set_opponent_policy(self, opponent_policy):
         self.opponent_policy = opponent_policy
 
     def reset(self, **kwargs):
@@ -28,7 +31,7 @@ class HexEnv(gym.Env):
         if action not in self.get_valid_actions():
             return (
                 np.array(self.hex.board, dtype=np.int8),
-                -10,
+                -5,
                 False,
                 False,
                 {"invalid_action": True},
@@ -40,15 +43,18 @@ class HexEnv(gym.Env):
         done = self.hex.winner != 0
 
         if not done:
-            self.hex.recode_black_as_white()
+            recoded_board = self.hex.recode_black_as_white()
             opponent_action = self.opponent_policy(
-                self.hex.board, self.get_valid_actions()
+                recoded_board, self.get_valid_actions(board=recoded_board)
             )
-            while opponent_action not in self.get_valid_actions():
+            while opponent_action not in self.get_valid_actions(board=recoded_board):
                 opponent_action = self.opponent_policy(
-                    self.hex.board, self.get_valid_actions()
+                    recoded_board, self.get_valid_actions(board=recoded_board)
                 )
-            opponent_action = self.hex.scalar_to_coordinates(opponent_action)
+
+            opponent_action = self.hex.recode_coordinates(
+                self.hex.scalar_to_coordinates(opponent_action)
+            )
 
             self.hex.move(opponent_action)
             self.hex.recode_black_as_white()
@@ -66,11 +72,13 @@ class HexEnv(gym.Env):
     def close(self):
         pass
 
-    def get_valid_actions(self):
+    def get_valid_actions(self, board=None):
+        if board is None:
+            board = self.hex.board
         valid_actions = []
         for i in range(self.size):
             for j in range(self.size):
-                if self.hex.board[i][j] == 0:
+                if board[i][j] == 0:
                     valid_actions.append(self.hex.coordinate_to_scalar((i, j)))
         return valid_actions
 
