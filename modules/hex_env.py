@@ -22,26 +22,34 @@ class HexEnv(gym.Env):
         return np.array(self.hex.board, dtype=np.int8), {}
 
     def step(self, action):
+        if self.hex.winner != 0:
+            self.hex.reset()
+
         if action not in self.get_valid_actions():
             return (
                 np.array(self.hex.board, dtype=np.int8),
                 -10,
-                True,
-                True,
+                False,
+                False,
                 {"invalid_action": True},
             )
 
         coordinates = self.hex.scalar_to_coordinates(action)
         self.hex.move(coordinates)
-        self.hex.recode_black_as_white()
 
         done = self.hex.winner != 0
 
         if not done:
+            self.hex.recode_black_as_white()
             opponent_action = self.opponent_policy(
                 self.hex.board, self.get_valid_actions()
             )
+            while opponent_action not in self.get_valid_actions():
+                opponent_action = self.opponent_policy(
+                    self.hex.board, self.get_valid_actions()
+                )
             opponent_action = self.hex.scalar_to_coordinates(opponent_action)
+
             self.hex.move(opponent_action)
             self.hex.recode_black_as_white()
             done = self.hex.winner != 0
