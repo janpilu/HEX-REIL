@@ -13,6 +13,9 @@ class PPOAgent:
         if self.model is not None:
             self.model.set_env(env)
 
+    def set_opponent_policy(self, opponent_policy):
+        self.env.set_opponent_policy(opponent_policy)
+
     def init_model(self):
         self.model = PPO("MlpPolicy", self.env, verbose=0)
 
@@ -32,7 +35,10 @@ class PPOAgent:
             obs, rewards, dones, info, *vals = self.env.step(action)
             self.env.render()
 
-    def evaluate_games(self, games):
+    def evaluate_games(self, games, opponent_policy=None, verbose=1):
+        training_opponent_policy = self.env.opponent_policy
+        if opponent_policy is not None:
+            self.env.opponent_policy = opponent_policy
         obs, *vals = self.env.reset()
         winners = []
         for i in range(games):
@@ -40,13 +46,18 @@ class PPOAgent:
             while not done:
                 action, _states = self.model.predict(obs)
                 obs, rewards, done, info, *vals = self.env.step(action)
-            print(f"Game {i + 1} over")
-            print("Winner: ", self.env.hex.winner)
+            if verbose >= 2:
+                print(f"Game {i + 1} over")
+                print("Winner: ", self.env.hex.winner)
             winners.append(self.env.hex.winner)
-            self.env.render()
-        print(f"Win rate: {winners.count(1) / games} ({winners.count(1)}/{games})")
+            if verbose >= 3:
+                self.env.render()
+        if verbose >= 1:
+            print(f"Win rate: {winners.count(1) / games} ({winners.count(1)}/{games})")
+        self.env.opponent_policy = training_opponent_policy
+        return winners.count(1) / games
 
-    def get_action(self, board, action_set):
+    def get_action(self, board, action_set, *args, **kwargs):
         valid_action = False
         while not valid_action:
             action, _states = self.model.predict(board)
