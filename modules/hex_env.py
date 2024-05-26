@@ -16,6 +16,7 @@ class HexEnv(gym.Env):
             low=-1, high=1, shape=(size, size), dtype=np.int8
         )
         self.opponent_policy = opponent_policy
+        self.current_game = 0
 
     def set_opponent_policy(self, opponent_policy):
         self.opponent_policy = opponent_policy
@@ -27,6 +28,7 @@ class HexEnv(gym.Env):
     def step(self, action):
         if self.hex.winner != 0:
             self.hex.reset()
+            self.current_game += 1
 
         if action not in self.get_valid_actions():
             return (
@@ -45,11 +47,15 @@ class HexEnv(gym.Env):
         if not done:
             recoded_board = self.hex.recode_black_as_white()
             opponent_action = self.opponent_policy(
-                recoded_board, self.get_valid_actions(board=recoded_board)
+                recoded_board,
+                self.get_valid_actions(board=recoded_board),
+                self.current_game,
             )
             while opponent_action not in self.get_valid_actions(board=recoded_board):
                 opponent_action = self.opponent_policy(
-                    recoded_board, self.get_valid_actions(board=recoded_board)
+                    recoded_board,
+                    self.get_valid_actions(board=recoded_board),
+                    self.current_game,
                 )
 
             opponent_action = self.hex.recode_coordinates(
