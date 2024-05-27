@@ -1,5 +1,6 @@
 from stable_baselines3 import PPO
 import numpy as np
+import os
 
 
 class PPOAgent:
@@ -11,7 +12,7 @@ class PPOAgent:
     def set_env(self, env):
         self.env = env
         if self.model is not None:
-            self.model.set_env(env)
+            self.model.set_env(self.env)
 
     def set_opponent_policy(self, opponent_policy):
         self.env.set_opponent_policy(opponent_policy)
@@ -24,7 +25,7 @@ class PPOAgent:
 
     def save(self, path):
         self.model.save(path)
-
+        
     def load(self, path):
         self.model = PPO.load(path)
 
@@ -53,7 +54,8 @@ class PPOAgent:
             if verbose >= 3:
                 self.env.render()
         if verbose >= 1:
-            print(f"Win rate: {winners.count(1) / games} ({winners.count(1)}/{games})")
+            print(f"Win rate: {(winners.count(1) / games):.2f}% - ({winners.count(1)}/{games})")
+        
         self.env.opponent_policy = training_opponent_policy
         return winners.count(1) / games
 

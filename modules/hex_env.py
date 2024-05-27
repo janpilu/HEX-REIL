@@ -49,13 +49,13 @@ class HexEnv(gym.Env):
             opponent_action = self.opponent_policy(
                 recoded_board,
                 self.get_valid_actions(board=recoded_board),
-                self.current_game,
+                self.current_game,  # <-- Ensure third argument is passed
             )
             while opponent_action not in self.get_valid_actions(board=recoded_board):
                 opponent_action = self.opponent_policy(
                     recoded_board,
                     self.get_valid_actions(board=recoded_board),
-                    self.current_game,
+                    self.current_game,  # <-- Ensure third argument is passed
                 )
 
             opponent_action = self.hex.recode_coordinates(
