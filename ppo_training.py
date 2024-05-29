@@ -18,7 +18,7 @@ def main(args):
     # create timestamp
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    print(f"Start training at {timestamp}")
+    print(f"Start training at {timestamp}\n")
 
     # assign the arguments to the variables
     board_size = args.board_size
@@ -39,6 +39,8 @@ def main(args):
         print("Loading models")
         policies = train_modules.get_policies(model_folder)
         opponent_policy = train_modules.get_opponent_policy(policies, args.number_of_policies)
+        print("  --- ", models)
+        
     else:
         if not args.against_random:
             print("No models found, playing against random")
@@ -49,7 +51,6 @@ def main(args):
     agent = PPOAgent()
 
     # Load if you have a trained model
-
     env = HexEnv(size=board_size, opponent_policy=opponent_policy)
 
     if most_recent_model is not None:
@@ -89,15 +90,15 @@ def main(args):
         if not args.skip_training:
             
             if score > -1:
-                print(f"Score: {score*100:.2f}%, did not reach threshold of {args.evaluation_threshold}%")
+                print(f"Score: {score*100:.2f}%, did not reach threshold of {args.evaluation_threshold}%\n")
             
-            print("Training model")
+            print("\nTraining model")
             agent.train(args.training_steps)
             
         print(f"Evaluating model against most recent model ({most_recent_model})")
         score = agent.evaluate_games(args.evaluation_steps, evaluation_agent.get_action)
 
-    print("Saving model")
+    print("\nSaving model")
     agent.save(model_path)
 
 
