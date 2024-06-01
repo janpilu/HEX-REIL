@@ -36,6 +36,7 @@ def get_policies(folder_path):
     
     sorted_models = get_sorted_models(folder_path)
     opponent_policies = []
+    model_files = []
     
     # Ignore the first model as it is the most recent and used by the agent and later for evaluation
     if len(sorted_models) > 1:
@@ -44,27 +45,28 @@ def get_policies(folder_path):
             agent = PPOAgent()
             agent.load(f"{folder_path}/{model}")
             opponent_policies.append(agent.get_action)
+            model_files.append(model)
     
     else:
         agent = PPOAgent()
         agent.load(f"{folder_path}/{sorted_models[0]}")
         opponent_policies.append(agent.get_action)
+        model_files.append(sorted_models[0])
         
-    return opponent_policies
+    return opponent_policies, model_files
 
 
-def get_opponent_policy(policies, number_of_policies=10):
+def get_opponent_policy(policies, model_files, number_of_policies=10):
     
     number_of_policies = min(number_of_policies, len(policies))
-
-    print(f"  --- Using {number_of_policies} policies\n")
-
     probabilities = gaussian_probabilities(len(policies))
-
-    selected_policies = [
-        policies[i]
-        for i in np.random.choice(len(policies), number_of_policies, p=probabilities)
-    ]
+    
+    indices = np.random.choice(len(policies), number_of_policies, p=probabilities)
+    selected_policies = [policies[i] for i in indices]
+    selected_model_files = [model_files[i] for i in indices]
+    
+    print(f"  --- Using {number_of_policies} policies")
+    print(f"  --- Selected models: {selected_model_files}\n")
 
     return lambda board, action_set, current_game: selected_policies[
         current_game % number_of_policies

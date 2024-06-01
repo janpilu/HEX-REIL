@@ -15,91 +15,95 @@ import modules.train_modules as train_modules
 
 def main(args):
     
-    # create timestamp
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-    print(f"Start training at {timestamp}\n")
-
-    # assign the arguments to the variables
-    board_size = args.board_size
-    model = args.model
+    number_of_runs = args.run_numbers
     
-    # main folder for models
-    os.makedirs("./models", exist_ok=True)
+    for run_number in range(number_of_runs):
     
-    model_folder = f"./models/{board_size}x{board_size}"
-    os.makedirs(model_folder, exist_ok=True)
-    
-    model_path = f"{model_folder}/{timestamp}_{model}"
+        # create timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    models = train_modules.get_sorted_models(model_folder)
-    most_recent_model = models[0] if len(models) > 0 else None
+        print(f"Start training at {timestamp}\n")
 
-    if len(models) > 0 and not args.against_random:
-        print("Loading models")
-        policies = train_modules.get_policies(model_folder)
-        opponent_policy = train_modules.get_opponent_policy(policies, args.number_of_policies)
-        print("  --- ", models)
+        # assign the arguments to the variables
+        board_size = args.board_size
+        model = args.model
         
-    else:
-        if not args.against_random:
-            print("No models found, playing against random")
+        # main folder for models
+        os.makedirs("./models", exist_ok=True)
+        
+        model_folder = f"./models/{board_size}x{board_size}"
+        os.makedirs(model_folder, exist_ok=True)
+        
+        model_path = f"{model_folder}/{timestamp}_{model}"
+
+        models = train_modules.get_sorted_models(model_folder)
+        most_recent_model = models[0] if len(models) > 0 else "Random"
+
+        if len(models) > 0 and not args.against_random:
+            print("Loading models")
+            policies, model_files = train_modules.get_policies(model_folder)
+            opponent_policy = train_modules.get_opponent_policy(policies, model_files, args.number_of_policies)
+            
         else:
-            print("Playing against random")
-        opponent_policy = lambda board, action_set, current_game: np.random.choice(action_set)  # <-- Modified to accept three arguments
+            if not args.against_random:
+                print("No models found, playing against random")
+            else:
+                print("Playing against random")
+            opponent_policy = lambda board, action_set, current_game: np.random.choice(action_set)  # <-- Modified to accept three arguments
 
-    agent = PPOAgent()
+        agent = PPOAgent()
 
-    # Load if you have a trained model
-    env = HexEnv(size=board_size, opponent_policy=opponent_policy)
+        # Load if you have a trained model
+        env = HexEnv(size=board_size, opponent_policy=opponent_policy)
 
-    if most_recent_model is not None:
-        print("Loading most recent model")
-        agent.load(f"{model_folder}/{most_recent_model}")
-        agent.set_env(env)
-        print(f"Model loaded, continuing training from {most_recent_model}")
-        
-        evaluation_agent = PPOAgent()
-        evaluation_agent.load(f"{model_folder}/{most_recent_model}")
-        evaluation_agent.set_env(env)
-    
-    else:
-        print("Creating new model")
-        agent.set_env(env)
-        agent.init_model()
-        
-        # define random agent for evaluation
-        evaluation_agent = PPOAgent()
-        evaluation_agent.set_env(env)
-        evaluation_agent.init_model()  # Ensure evaluation model is initialized
-
-    score = -1
-    training_round = 0
-    
-
-    while score < args.evaluation_threshold / 100:
-        
-        if training_round % args.resampling_threshold == 0 and training_round != 0:
-            print(f"{args.resampling_threshold} rounds have passed without reaching threshold")
-            print("Resampling opponent policy")
-            opponent_policy = train_modules.get_opponent_policy(policies, args.number_of_policies)
-            agent.set_opponent_policy(opponent_policy)
-        
-        training_round += 1
-        
-        if not args.skip_training:
+        if most_recent_model is not None:
+            print("\nLoading most recent model")
+            agent.load(f"{model_folder}/{most_recent_model}")
+            agent.set_env(env)
+            print(f"Model loaded, continuing training from {most_recent_model}")
             
-            if score > -1:
-                print(f"Score: {score*100:.2f}%, did not reach threshold of {args.evaluation_threshold}%\n")
+            evaluation_agent = PPOAgent()
+            evaluation_agent.load(f"{model_folder}/{most_recent_model}")
+            evaluation_agent.set_env(env)
+        
+        else:
+            print("Creating new model")
+            agent.set_env(env)
+            agent.init_model()
             
-            print("\nTraining model")
-            agent.train(args.training_steps)
-            
-        print(f"Evaluating model against most recent model ({most_recent_model})")
-        score = agent.evaluate_games(args.evaluation_steps, evaluation_agent.get_action)
+            # define random agent for evaluation
+            evaluation_agent = PPOAgent()
+            evaluation_agent.set_env(env)
+            evaluation_agent.init_model()  # Ensure evaluation model is initialized
 
-    print("\nSaving model")
-    agent.save(model_path)
+        score = -1
+        training_round = 0
+        
+        while score < args.evaluation_threshold / 100:
+            
+            if training_round % args.resampling_threshold == 0 and training_round != 0:
+                print(f"{args.resampling_threshold} rounds have passed without reaching threshold")
+                print("Resampling opponent policy")
+                opponent_policy = train_modules.get_opponent_policy(policies, model_files, args.number_of_policies)
+                agent.set_opponent_policy(opponent_policy)
+            
+            training_round += 1
+            
+            if not args.skip_training:
+                
+                if score > -1:
+                    print(f"Score: {score*100:.2f}%, did not reach threshold of {args.evaluation_threshold}%\n")
+                
+                print("\nTraining model")
+                agent.train(args.training_steps)
+                
+            print(f"Evaluating model against most recent model ({most_recent_model})")
+            score = agent.evaluate_games(args.evaluation_steps, evaluation_agent.get_action)
+
+        print("\nSaving model!\n")
+        agent.save(model_path)
+        
+        print(f"Run {run_number + 1} out of {number_of_runs} completed\n\n\n")
 
 
 ## TODOS:
@@ -114,6 +118,11 @@ if __name__ == "__main__":
 
     # define the parser
     parser = argparse.ArgumentParser(description="Training PPO Agent")
+
+    # Add argument for number of runs
+    parser.add_argument(
+        "-r", "--run_numbers", type=int, default=1, help="Number of runs"
+    )
 
     # Add argument for board size
     parser.add_argument(
