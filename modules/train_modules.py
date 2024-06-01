@@ -28,9 +28,7 @@ def get_sorted_models(folder_path):
         model_files,
         reverse=True,
     )
-    
-    print(sorted_models)
-        
+            
     return sorted_models
 
 
@@ -59,7 +57,7 @@ def get_opponent_policy(policies, number_of_policies=10):
     
     number_of_policies = min(number_of_policies, len(policies))
 
-    print(f"Using {number_of_policies} policies")
+    print(f"  --- Using {number_of_policies} policies\n")
 
     probabilities = gaussian_probabilities(len(policies))
 

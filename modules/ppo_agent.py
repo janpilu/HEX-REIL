@@ -55,7 +55,7 @@ class PPOAgent:
                 self.env.render()
         if verbose >= 1:
             print(
-                f"Win rate: {(winners.count(1) / games)*100:.2f}% - ({winners.count(1)}/{games})"
+                f"\nWin rate: {(winners.count(1) / games)*100:.2f}% - ({winners.count(1)}/{games})"
             )
 
         self.env.opponent_policy = training_opponent_policy

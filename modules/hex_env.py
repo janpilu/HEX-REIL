@@ -7,7 +7,7 @@ from fhtw_hex.hex_engine import hexPosition
 class HexEnv(gym.Env):
     metadata = {"render.modes": ["human"]}
 
-    def __init__(self, opponent_policy, size=5):
+    def __init__(self, opponent_policy=None, size=5):
         super(HexEnv, self).__init__()
         self.hex = hexPosition(size=size)
         self.size = size
@@ -44,7 +44,7 @@ class HexEnv(gym.Env):
 
         done = self.hex.winner != 0
 
-        if not done:
+        if not done and self.opponent_policy is not None:
             recoded_board = self.hex.recode_black_as_white()
             opponent_action = self.opponent_policy(
                 recoded_board,
