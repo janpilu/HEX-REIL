@@ -37,7 +37,7 @@ def main(args):
         model_path = f"{model_folder}/{timestamp}_{model}"
 
         models = train_modules.get_sorted_models(model_folder)
-        most_recent_model = models[0] if len(models) > 0 else "Random"
+        most_recent_model = models[0] if len(models) > 0 else None
 
         if len(models) > 0 and not args.against_random:
             print("Loading models")
