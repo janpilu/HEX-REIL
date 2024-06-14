@@ -31,14 +31,6 @@ class HexEnv(gym.Env):
         self.current_player = player
 
     def step(self, action):
-        if action not in self.get_valid_actions():
-            return (
-                self.get_corrected_board(),
-                -50,
-                False,
-                False,
-                {"invalid_action": True},
-            )
 
         coordinates = (
             self.hex.scalar_to_coordinates(action)
@@ -137,15 +129,17 @@ class HexEnv(gym.Env):
                     valid_actions.append(self.hex.coordinate_to_scalar((i, j)))
         return valid_actions
 
-    def get_masked_actions(self):
-        board = (
-            self.hex.board
-            if self.current_player == 1
-            else self.hex.recode_black_as_white()
-        )
+    def get_masked_actions(self, board=None):
+        if board is None:
+            board = (
+                self.hex.board
+                if self.current_player == 1
+                else self.hex.recode_black_as_white()
+            )
 
-        return [
-            0 if board[i][j] != 0 else 1
-            for i in range(self.size)
-            for j in range(self.size)
-        ]
+        action_masks = np.ones(self.hex.size**2)
+        for i in range(self.hex.size):
+            for j in range(self.hex.size):
+                if board[i][j] != 0:
+                    action_masks[self.hex.coordinate_to_scalar((i, j))] = 0
+        return action_masks

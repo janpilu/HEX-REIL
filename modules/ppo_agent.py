@@ -40,13 +40,11 @@ class PPOAgent:
             self.env.render()
 
     def evaluate_games(self, games, opponent_policy=None, verbose=1):
-        training_opponent_policy = self.env.opponent_policy
+        training_opponent_policy = self.env.unwrapped.opponent_policy
         if opponent_policy is not None:
-            self.env.opponent_policy = opponent_policy
+            self.env.unwrapped.opponent_policy = opponent_policy
 
-        # self.env.current_player = 1
         obs, *vals = self.env.reset()
-        self.env.set_player(1)
         wins = []
         winner = 0
         board = None
@@ -54,20 +52,21 @@ class PPOAgent:
 
         for i in range(games):
             done = False
-            self.env.render()
             while not done:
-                action, _states = self.model.predict(obs)
+                action, _states = self.model.predict(
+                    obs, action_masks=self.env.unwrapped.get_masked_actions(obs)
+                )
                 obs, rewards, done, info, winner_dict = self.env.step(action)
                 # print(winner_dict)
                 winner = winner_dict.get("winner", 0)
                 board = winner_dict.get("board", None)
                 player = winner_dict.get("player", 0)
 
-            if verbose >= 2:
-                print(f"Game {i + 1} over")
-
             if winner == player:
                 wins.append(player)
+
+            if verbose >= 2:
+                print(f"Game {i + 1} over")
 
             if verbose >= 3:
                 print("Winner: ", winner)
@@ -82,24 +81,14 @@ class PPOAgent:
             print(f"White wins: {wins.count(1)}")
             print(f"Black wins: {wins.count(-1)}")
 
-        self.env.opponent_policy = training_opponent_policy
+        self.env.unwrapped.opponent_policy = training_opponent_policy
         return len(wins) / games
 
-    def get_action(self, board, action_set, *args, **kwargs):
-        valid_action = False
-        while not valid_action:
-            action, _states = self.model.predict(
-                board, action_masks=self.get_masked_actions(board)
-            )
-            if action in action_set:
-                return action
-
-    def get_masked_actions(self, board):
-        action_masks = np.ones(self.env.hex.size**2)
-        for i, action in enumerate(action_masks):
-            if board[i] != 0:
-                action_masks[i] = 0
-        return action_masks
+    def get_action(self, board, *args, **kwargs):
+        action, _states = self.model.predict(
+            board, action_masks=self.env.unwrapped.get_masked_actions(board)
+        )
+        return action
 
     def get_random_action(self, board, action_set):
         return action_set[np.random.randint(len(action_set))]

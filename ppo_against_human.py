@@ -46,7 +46,7 @@ def main(args):
 
     # Initialize the environment
     env = HexEnv(size=board_size)
-    env = ActionMasker(env, lambda env: env.get_masked_actions())
+    env = ActionMasker(env, lambda env: env.unwrapped.get_masked_actions())
     agent.set_env(env)
 
     # Decide who starts randomly
