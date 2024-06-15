@@ -23,7 +23,6 @@ class HexEnv(gym.Env):
         self.opponent_policy = opponent_policy
 
     def reset(self, **kwargs):
-        # print("Resetting environment")
         self.hex.reset()
         return self.get_corrected_board(), {}
 
@@ -31,97 +30,64 @@ class HexEnv(gym.Env):
         self.current_player = player
 
     def step(self, action):
-
-        coordinates = (
-            self.hex.scalar_to_coordinates(action)
-            if self.current_player == 1
-            else self.hex.recode_coordinates(self.hex.scalar_to_coordinates(action))
-        )
-
+        # Convert action to board coordinates and move
+        coordinates = self.convert_action_to_coordinates(action)
         self.hex.move(coordinates)
 
+        # Check if the game is done
         done = self.hex.winner != 0
 
+        # If the game is not done, let the opponent make a move
         if not done and self.opponent_policy is not None:
             self.opponent_action()
             done = self.hex.winner != 0
 
         reward = 0
-
         winner = 0
+        player = 0
         winning_board = None
 
+        # If the game is done, calculate the reward and reset the board
         if done:
             reward = 1 if self.hex.winner == self.current_player else -1
             winner = self.hex.winner
-            winning_board = self.hex.board
+            player = self.current_player
+            winning_board = self.hex.board.copy()
             self.hex.reset()
             self.current_game += 1
             self.current_player *= -1
-            # print(f"Game {self.current_game} over")
-            # print("Winner: ", winner)
-            # print("Player:", self.current_player)
+
+            # Let opponent make the first move if he is playing as white
             if self.current_player == -1:
                 self.opponent_action()
 
         return (
-            self.get_corrected_board(),
+            self.get_corrected_board(),  # Return the current board state without correction
             reward,
             done,
             done,
-            {"winner": winner, "board": winning_board, "player": self.current_player},
-        )
-
-    def get_corrected_board(self):
-        return (
-            self.hex.board
-            if self.current_player == 1
-            else self.hex.recode_black_as_white()
+            {"winner": winner, "board": winning_board, "player": player},
         )
 
     def opponent_action(self):
-        board = (
-            self.hex.board
-            if self.current_player == -1
-            else self.hex.recode_black_as_white()
+        action = self.opponent_policy(
+            self.get_corrected_board(opponent=True),
+            self.get_valid_actions(opponent=True),
+            self.current_game,
         )
 
-        opponent_action = self.opponent_policy(
-            board,
-            self.get_valid_actions(board=board),
-            self.current_game,  # <-- Ensure third argument is passed
-        )
-        # while opponent_action not in self.get_valid_actions(board=recoded_board):
-        #     opponent_action = self.opponent_policy(
-        #         recoded_board,
-        #         self.get_valid_actions(board=recoded_board),
-        #         self.current_game,  # <-- Ensure third argument is passed
-        #     )
+        coordinates = self.convert_action_to_coordinates(action, opponent=True)
 
-        opponent_action = (
-            self.hex.scalar_to_coordinates(opponent_action)
-            if self.current_player == -1
-            else self.hex.recode_coordinates(
-                self.hex.scalar_to_coordinates(opponent_action)
-            )
-        )
-
-        self.hex.move(opponent_action)
+        self.hex.move(coordinates)
 
     def render(self, mode="human", close=False):
         if mode == "human":
             self.hex.print()
 
-    def close(self):
-        pass
-
-    def get_valid_actions(self, board=None):
+    def get_valid_actions(self, opponent=False, board=None):
         if board is None:
-            board = (
-                self.hex.board
-                if self.current_player == 1
-                else self.hex.recode_black_as_white()
-            )
+            board = self.get_corrected_board(opponent=opponent)
+
         valid_actions = []
         for i in range(self.size):
             for j in range(self.size):
@@ -131,11 +97,7 @@ class HexEnv(gym.Env):
 
     def get_masked_actions(self, board=None):
         if board is None:
-            board = (
-                self.hex.board
-                if self.current_player == 1
-                else self.hex.recode_black_as_white()
-            )
+            board = self.get_corrected_board()
 
         action_masks = np.ones(self.hex.size**2)
         for i in range(self.hex.size):
@@ -143,3 +105,34 @@ class HexEnv(gym.Env):
                 if board[i][j] != 0:
                     action_masks[self.hex.coordinate_to_scalar((i, j))] = 0
         return action_masks
+
+    def get_corrected_board(self, opponent=False):
+        if opponent:
+            return (
+                self.hex.board
+                if self.current_player == -1
+                else self.hex.recode_black_as_white()
+            )
+
+        return (
+            self.hex.board
+            if self.current_player == 1
+            else self.hex.recode_black_as_white()
+        )
+
+    def convert_action_to_coordinates(self, action, opponent=False):
+        if opponent:
+            return (
+                self.hex.scalar_to_coordinates(action)
+                if self.current_player == -1
+                else self.hex.recode_coordinates(self.hex.scalar_to_coordinates(action))
+            )
+
+        return (
+            self.hex.scalar_to_coordinates(action)
+            if self.current_player == 1
+            else self.hex.recode_coordinates(self.hex.scalar_to_coordinates(action))
+        )
+
+    def close(self):
+        pass
