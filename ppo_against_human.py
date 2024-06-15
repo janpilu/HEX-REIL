@@ -95,7 +95,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Play Hex against a trained PPO Agent")
 
     parser.add_argument(
-        "-b", "--board_size", type=int, default=4, help="Size of the board"
+        "-b", "--board_size", type=int, default=5, help="Size of the board"
     )
 
     parser.add_argument(

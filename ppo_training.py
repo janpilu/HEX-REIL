@@ -118,7 +118,7 @@ def main(args):
 
             print(f"Evaluating model against most recent model ({most_recent_model})")
             score = agent.evaluate_games(
-                args.evaluation_steps, evaluation_agent.get_action, verbose=3
+                args.evaluation_steps, evaluation_agent.get_action, verbose=1
             )
 
         print("\nSaving model!\n")
@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
     # Add argument for number of runs
     parser.add_argument(
-        "-r", "--run_numbers", type=int, default=1, help="Number of runs"
+        "-r", "--run_numbers", type=int, default=10, help="Number of runs"
     )
 
     # Add argument for board size
@@ -158,7 +158,7 @@ if __name__ == "__main__":
         "-ts",
         "--training_steps",
         type=int,
-        default=20000,
+        default=50000,
         help="Number of training steps",
     )
 

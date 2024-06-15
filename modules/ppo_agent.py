@@ -86,7 +86,7 @@ class PPOAgent:
 
     def get_action(self, board, *args, **kwargs):
         action, _states = self.model.predict(
-            board, action_masks=self.env.unwrapped.get_masked_actions(board)
+            board, action_masks=self.get_masked_actions(board)
         )
         return action
 
@@ -98,3 +98,14 @@ class PPOAgent:
         engine.board = board
         engine.print()
         print("\n")
+
+    def get_masked_actions(self, board):
+        size = len(board)
+        hex = hexPosition(size=size)
+
+        action_masks = np.ones(size**2)
+        for i in range(size):
+            for j in range(size):
+                if board[i][j] != 0:
+                    action_masks[hex.coordinate_to_scalar((i, j))] = 0
+        return action_masks
