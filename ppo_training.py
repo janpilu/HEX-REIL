@@ -120,6 +120,7 @@ def main(args):
             score = agent.evaluate_games(
                 args.evaluation_steps, evaluation_agent.get_action, verbose=1
             )
+            
 
         print("\nSaving model!\n")
         agent.save(model_path)
@@ -147,7 +148,7 @@ if __name__ == "__main__":
 
     # Add argument for board size
     parser.add_argument(
-        "-b", "--board_size", type=int, default=5, help="Size of the board"
+        "-b", "--board_size", type=int, default=7, help="Size of the board"
     )
 
     # Add argument for model
@@ -158,7 +159,7 @@ if __name__ == "__main__":
         "-ts",
         "--training_steps",
         type=int,
-        default=50000,
+        default=100000,
         help="Number of training steps",
     )
 

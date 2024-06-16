@@ -5,6 +5,9 @@ import os
 
 from fhtw_hex.hex_engine import hexPosition
 
+from modules.logger import EvaluationLogger
+from modules.evaluation_callback import EvalCallback
+
 
 class PPOAgent:
 
@@ -24,7 +27,8 @@ class PPOAgent:
         self.model = PPO("MlpPolicy", self.env, verbose=0)
 
     def train(self, steps):
-        self.model.learn(total_timesteps=steps, progress_bar=True)
+        logger = EvaluationLogger("evaluation.csv")
+        self.model.learn(total_timesteps=steps, progress_bar=True, callback= EvalCallback(logger))
 
     def save(self, path):
         self.model.save(path)
@@ -109,3 +113,4 @@ class PPOAgent:
                 if board[i][j] != 0:
                     action_masks[hex.coordinate_to_scalar((i, j))] = 0
         return action_masks
+
