@@ -5,6 +5,7 @@ import numpy as np
 
 
 from pathlib import Path
+from modules.logger import EvaluationLogger
 from modules.ppo_agent import PPOAgent
 from modules.hex_env import HexEnv
 from datetime import datetime
@@ -59,7 +60,8 @@ def main(args):
                 action_set
             )  # <-- Modified to accept three arguments
 
-        agent = PPOAgent()
+        logger = EvaluationLogger(f"training-{timestamp}.csv")
+        agent = PPOAgent(logger=logger)
 
         # Load if you have a trained model
         env = HexEnv(size=board_size, opponent_policy=opponent_policy)
@@ -93,16 +95,18 @@ def main(args):
             if (
                 training_round % args.resampling_threshold == 0
                 and training_round != 0
-                and len(policies) > args.number_of_policies
             ):
                 print(
                     f"{args.resampling_threshold} rounds have passed without reaching threshold"
                 )
-                print("Resampling opponent policy")
-                opponent_policy = train_modules.get_opponent_policy(
-                    policies, model_files, args.number_of_policies
-                )
-                agent.set_opponent_policy(opponent_policy)
+                if len(policies) > args.number_of_policies:
+                    print("Resampling opponent policy")
+                    opponent_policy = train_modules.get_opponent_policy(
+                        policies, model_files, args.number_of_policies
+                    )
+                    agent.set_opponent_policy(opponent_policy)
+                print("Updating learning rate")
+                agent.update_lr()
 
             training_round += 1
 
@@ -126,6 +130,7 @@ def main(args):
         agent.save(model_path)
 
         print(f"Run {run_number + 1} out of {number_of_runs} completed\n\n\n")
+    logger.close()
 
 
 ## TODOS:
@@ -143,7 +148,7 @@ if __name__ == "__main__":
 
     # Add argument for number of runs
     parser.add_argument(
-        "-r", "--run_numbers", type=int, default=10, help="Number of runs"
+        "-r", "--run_numbers", type=int, default=20, help="Number of runs"
     )
 
     # Add argument for board size
@@ -159,7 +164,7 @@ if __name__ == "__main__":
         "-ts",
         "--training_steps",
         type=int,
-        default=100000,
+        default=20000,
         help="Number of training steps",
     )
 

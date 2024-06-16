@@ -11,9 +11,13 @@ from modules.evaluation_callback import EvalCallback
 
 class PPOAgent:
 
-    def __init__(self):
+    def __init__(self, logger=None):
         self.env = None
         self.model = None
+        self.logger = logger
+        if self.logger is not None:
+            logger.set_lr(0.0003)
+            
 
     def set_env(self, env):
         self.env = env
@@ -24,11 +28,12 @@ class PPOAgent:
         self.env.set_opponent_policy(opponent_policy)
 
     def init_model(self):
-        self.model = PPO("MlpPolicy", self.env, verbose=0)
+        self.model = PPO("MlpPolicy", self.env, 
+                         learning_rate= 0.0003,
+                         verbose=0)
 
     def train(self, steps):
-        logger = EvaluationLogger("evaluation.csv")
-        self.model.learn(total_timesteps=steps, progress_bar=True, callback= EvalCallback(logger))
+        self.model.learn(total_timesteps=steps, progress_bar=True, callback= EvalCallback(self.logger))
 
     def save(self, path):
         self.model.save(path)
@@ -42,6 +47,18 @@ class PPOAgent:
             action, _states = self.model.predict(obs)
             obs, rewards, dones, info, *vals = self.env.step(action)
             self.env.render()
+    
+    def update_lr(self):
+        learning_rates = [0.00001, 0.00005, 0.0001, 0.0003, 0.0005, 0.001]
+        current_lr = self.model.learning_rate
+        new_lr_index = learning_rates.index(current_lr) + 1
+        if new_lr_index >= len(learning_rates):
+            new_lr_index = 0
+        new_lr = learning_rates[learning_rates.index(current_lr) + 1]
+        self.model.learning_rate = new_lr
+        self.logger.set_lr(new_lr)
+
+
 
     def evaluate_games(self, games, opponent_policy=None, verbose=1):
         training_opponent_policy = self.env.unwrapped.opponent_policy
