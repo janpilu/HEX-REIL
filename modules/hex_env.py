@@ -3,7 +3,6 @@ from gymnasium import spaces
 import numpy as np
 from fhtw_hex.hex_engine import hexPosition
 
-
 class HexEnv(gym.Env):
     metadata = {"render.modes": ["human"]}
 
@@ -18,6 +17,8 @@ class HexEnv(gym.Env):
         self.opponent_policy = opponent_policy
         self.current_game = 0
         self.current_player = 1
+        self.players = [1, -1]
+        self.current_player_index = 0
 
     def set_opponent_policy(self, opponent_policy):
         self.opponent_policy = opponent_policy
@@ -55,7 +56,10 @@ class HexEnv(gym.Env):
             winning_board = self.hex.board.copy()
             self.hex.reset()
             self.current_game += 1
-            self.current_player *= -1
+            self.current_player_index = (self.current_player_index + 1)
+            if self.current_player_index >= len(self.players):
+                self.current_player_index = 0
+            self.current_player = self.players[self.current_player_index]
 
             # Let opponent make the first move if he is playing as white
             if self.current_player == -1:
@@ -133,6 +137,9 @@ class HexEnv(gym.Env):
             if self.current_player == 1
             else self.hex.recode_coordinates(self.hex.scalar_to_coordinates(action))
         )
-
+    
+    def focus_on_player(self, players):
+        self.players = players
+    
     def close(self):
         pass

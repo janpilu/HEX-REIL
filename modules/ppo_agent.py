@@ -54,7 +54,7 @@ class PPOAgent:
         new_lr_index = learning_rates.index(current_lr) + 1
         if new_lr_index >= len(learning_rates):
             new_lr_index = 0
-        new_lr = learning_rates[learning_rates.index(current_lr) + 1]
+        new_lr = learning_rates[new_lr_index]
         self.model.learning_rate = new_lr
         self.logger.set_lr(new_lr)
 
@@ -103,7 +103,7 @@ class PPOAgent:
             print(f"Black wins: {wins.count(-1)}")
 
         self.env.unwrapped.opponent_policy = training_opponent_policy
-        return len(wins) / games
+        return {'win_rate':len(wins) / games, 'white_wins':wins.count(1), 'black_wins': wins.count(-1)}
 
     def get_action(self, board, *args, **kwargs):
         action, _states = self.model.predict(
@@ -119,6 +119,9 @@ class PPOAgent:
         engine.board = board
         engine.print()
         print("\n")
+
+    def focus_on_player(self, players):
+        self.env.unwrapped.focus_on_player(players)
 
     def get_masked_actions(self, board):
         size = len(board)

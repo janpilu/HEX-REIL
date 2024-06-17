@@ -121,9 +121,19 @@ def main(args):
                 agent.train(args.training_steps)
 
             print(f"Evaluating model against most recent model ({most_recent_model})")
-            score = agent.evaluate_games(
+            results = agent.evaluate_games(
                 args.evaluation_steps, evaluation_agent.get_action, verbose=1
             )
+            score = results["win_rate"]
+            if results['black_wins'] < args.evaluation_steps * score * 0.1:
+                print("Black wins less than 10% focus on black player")
+                agent.focus_on_player([-1])
+            elif results['white_wins'] < args.evaluation_steps * score * 0.1:
+                print("White wins less than 10% focus on white player")
+                agent.focus_on_player([1])
+            else:
+                print("White and black wins greater than 10%")
+                agent.focus_on_player([1, -1])
             
 
         print("\nSaving model!\n")
@@ -191,7 +201,7 @@ if __name__ == "__main__":
         "-et",
         "--evaluation_threshold",
         type=int,
-        default=60,
+        default=55 ,
         help="Percent to reach before stopping training",
     )
 
