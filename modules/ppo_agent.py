@@ -17,7 +17,6 @@ class PPOAgent:
         self.logger = logger
         if self.logger is not None:
             logger.set_lr(0.0003)
-            
 
     def set_env(self, env):
         self.env = env
@@ -28,12 +27,12 @@ class PPOAgent:
         self.env.set_opponent_policy(opponent_policy)
 
     def init_model(self):
-        self.model = PPO("MlpPolicy", self.env, 
-                         learning_rate= 0.0003,
-                         verbose=0)
+        self.model = PPO("MlpPolicy", self.env, learning_rate=0.0003, verbose=0)
 
     def train(self, steps):
-        self.model.learn(total_timesteps=steps, progress_bar=True, callback= EvalCallback(self.logger))
+        self.model.learn(
+            total_timesteps=steps, progress_bar=True, callback=EvalCallback(self.logger)
+        )
 
     def save(self, path):
         self.model.save(path)
@@ -47,9 +46,9 @@ class PPOAgent:
             action, _states = self.model.predict(obs)
             obs, rewards, dones, info, *vals = self.env.step(action)
             self.env.render()
-    
+
     def update_lr(self):
-        learning_rates = [0.00001, 0.00005, 0.0001, 0.0003, 0.0005, 0.001]
+        learning_rates = [0.00005, 0.0001, 0.0003]
         current_lr = self.model.learning_rate
         new_lr_index = learning_rates.index(current_lr) + 1
         if new_lr_index >= len(learning_rates):
@@ -57,8 +56,6 @@ class PPOAgent:
         new_lr = learning_rates[new_lr_index]
         self.model.learning_rate = new_lr
         self.logger.set_lr(new_lr)
-
-
 
     def evaluate_games(self, games, opponent_policy=None, verbose=1):
         training_opponent_policy = self.env.unwrapped.opponent_policy
@@ -103,7 +100,11 @@ class PPOAgent:
             print(f"Black wins: {wins.count(-1)}")
 
         self.env.unwrapped.opponent_policy = training_opponent_policy
-        return {'win_rate':len(wins) / games, 'white_wins':wins.count(1), 'black_wins': wins.count(-1)}
+        return {
+            "win_rate": len(wins) / games,
+            "white_wins": wins.count(1),
+            "black_wins": wins.count(-1),
+        }
 
     def get_action(self, board, *args, **kwargs):
         action, _states = self.model.predict(
@@ -133,4 +134,3 @@ class PPOAgent:
                 if board[i][j] != 0:
                     action_masks[hex.coordinate_to_scalar((i, j))] = 0
         return action_masks
-

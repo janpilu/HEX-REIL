@@ -50,7 +50,8 @@ def main(args):
     agent.set_env(env)
 
     # Decide who starts randomly
-    human_player_starts = random.choice([True, False])
+    human_player_starts = True
+    # human_player_starts = random.choice([True, False])
     human_player = 1 if human_player_starts else -1
 
     print(f"\nHuman is playing as {'White' if human_player == 1 else 'Black'}")

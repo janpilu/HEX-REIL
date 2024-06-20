@@ -46,7 +46,9 @@ def main(args):
 
         if len(models) > 0 and not args.against_random:
             print("Loading models")
-            policies, model_files = train_modules.get_policies(model_folder)
+            policies, model_files = train_modules.get_policies(
+                model_folder, include_most_recent=False
+            )
             opponent_policy = train_modules.get_opponent_policy(
                 policies, model_files, args.number_of_policies
             )
@@ -92,21 +94,22 @@ def main(args):
 
         while score < args.evaluation_threshold / 100:
 
-            if (
-                training_round % args.resampling_threshold == 0
-                and training_round != 0
-            ):
-                print(
-                    f"{args.resampling_threshold} rounds have passed without reaching threshold"
-                )
-                if len(policies) > args.number_of_policies:
+            if training_round != 0:
+                if training_round % args.lr_update_threshold == 0:
+                    print(
+                        f"{args.lr_update_threshold} rounds have passed without reaching threshold"
+                    )
+                    print("Updating learning rate")
+                    agent.update_lr()
+                if (
+                    len(policies) > args.number_of_policies
+                    and training_round % (args.lr_update_threshold * 3) == 0
+                ):
                     print("Resampling opponent policy")
                     opponent_policy = train_modules.get_opponent_policy(
                         policies, model_files, args.number_of_policies
                     )
                     agent.set_opponent_policy(opponent_policy)
-                print("Updating learning rate")
-                agent.update_lr()
 
             training_round += 1
 
@@ -121,20 +124,31 @@ def main(args):
                 agent.train(args.training_steps)
 
             print(f"Evaluating model against most recent model ({most_recent_model})")
+            agent.focus_on_player([1, -1])
             results = agent.evaluate_games(
                 args.evaluation_steps, evaluation_agent.get_action, verbose=1
             )
             score = results["win_rate"]
-            if results['black_wins'] < args.evaluation_steps * score * 0.1:
-                print("Black wins less than 10% focus on black player")
+
+            if (
+                results["black_wins"]
+                < args.evaluation_steps * score * args.focus_threshold / 100
+            ):
+                print(
+                    f"Black wins less than {args.focus_threshold}% focus on black player"
+                )
                 agent.focus_on_player([-1])
-            elif results['white_wins'] < args.evaluation_steps * score * 0.1:
-                print("White wins less than 10% focus on white player")
+            elif (
+                results["white_wins"]
+                < args.evaluation_steps * score * args.focus_threshold / 100
+            ):
+                print(
+                    f"White wins less than {args.focus_threshold}% focus on white player"
+                )
                 agent.focus_on_player([1])
             else:
-                print("White and black wins greater than 10%")
+                print(f"White and black wins greater than {args.focus_threshold}%")
                 agent.focus_on_player([1, -1])
-            
 
         print("\nSaving model!\n")
         agent.save(model_path)
@@ -174,7 +188,7 @@ if __name__ == "__main__":
         "-ts",
         "--training_steps",
         type=int,
-        default=20000,
+        default=30000,
         help="Number of training steps",
     )
 
@@ -201,16 +215,16 @@ if __name__ == "__main__":
         "-et",
         "--evaluation_threshold",
         type=int,
-        default=55 ,
+        default=57,
         help="Percent to reach before stopping training",
     )
 
     # Add argument for resampling threshold
     parser.add_argument(
         "-rt",
-        "--resampling_threshold",
+        "--lr_update_threshold",
         type=int,
-        default=5,
+        default=4,
         help="Number of training rounds before resampling opponent policy",
     )
 
@@ -237,6 +251,14 @@ if __name__ == "__main__":
         type=int,
         default=10,
         help="Number of policies to use",
+    )
+
+    parser.add_argument(
+        "-ft",
+        "--focus_threshold",
+        type=int,
+        default=20,
+        help="Threshold for focusing on player",
     )
 
     # parse the arguments

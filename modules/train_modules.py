@@ -6,9 +6,11 @@ from scipy.stats import norm
 from modules.ppo_agent import PPOAgent
 
 
-def gaussian_probabilities(n):
+def gaussian_probabilities(n, shift=2):
     # Generate an array of indices
     x = np.linspace(-3, 3, n)  # -3 and 3 are arbitrary bounds for the Gaussian
+    # Shift the mean of the Gaussian to the right
+    x = x - np.min(x) - shift
     # Generate Gaussian distribution values for these indices
     probabilities = norm.pdf(x)
     # Normalize the probabilities so they sum to 1
@@ -32,16 +34,17 @@ def get_sorted_models(folder_path):
     return sorted_models
 
 
-def get_policies(folder_path):
+def get_policies(folder_path, include_most_recent=False):
 
     sorted_models = get_sorted_models(folder_path)
     opponent_policies = []
     model_files = []
 
-    # Ignore the first model as it is the most recent and used by the agent and later for evaluation
-    if len(sorted_models) > 1:
+    if not include_most_recent and len(sorted_models) > 1:
+        sorted_models = sorted_models[1:]
 
-        for model in sorted_models[1:]:
+    if len(sorted_models) >= 1:
+        for model in sorted_models:
             agent = PPOAgent()
             agent.load(f"{folder_path}/{model}")
             opponent_policies.append(agent.get_action)
@@ -60,10 +63,13 @@ def get_opponent_policy(policies, model_files, number_of_policies=10):
     number_of_policies = min(number_of_policies, len(policies))
     probabilities = gaussian_probabilities(len(policies))
 
-    indices = np.random.choice(len(policies), number_of_policies, p=probabilities)
+    indices = np.random.choice(
+        len(policies), number_of_policies, p=probabilities, replace=False
+    )
     selected_policies = [policies[i] for i in indices]
     selected_model_files = [model_files[i] for i in indices]
 
+    print(f"  --- Sampling from {model_files}")
     print(f"  --- Using {number_of_policies} policies")
     print(f"  --- Selected models: {selected_model_files}\n")
 
