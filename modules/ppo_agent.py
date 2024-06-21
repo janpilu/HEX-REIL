@@ -1,12 +1,9 @@
-# from stable_baselines3 import PPO
-from sb3_contrib import MaskablePPO as PPO
 import numpy as np
-import os
+import torch
+from modules.ppo import PPO  # Import your custom PPO implementation
+from tqdm import tqdm
 
 from fhtw_hex.hex_engine import hexPosition
-
-from modules.logger import EvaluationLogger
-from modules.evaluation_callback import EvalCallback
 
 
 class PPOAgent:
@@ -21,41 +18,57 @@ class PPOAgent:
     def set_env(self, env):
         self.env = env
         if self.model is not None:
-            self.model.set_env(self.env)
+            self.model.env = (
+                self.env
+            )  # Ensure the environment is set in your custom PPO
 
     def set_opponent_policy(self, opponent_policy):
         self.env.set_opponent_policy(opponent_policy)
 
     def init_model(self):
-        self.model = PPO("MlpPolicy", self.env, learning_rate=0.0003, verbose=0)
+        input_dims = self.env.observation_space.shape
+        n_actions = self.env.action_space.n
+        self.model = PPO(n_actions, input_dims, alpha=0.0003, use_conv=True)
 
     def train(self, steps):
-        self.model.learn(
-            total_timesteps=steps, progress_bar=True, callback=EvalCallback(self.logger)
-        )
+        obs = self.env.reset()[0]
+        for _ in tqdm(range(steps), desc="Training Progress"):
+            action, log_probs, value = self.model.choose_action(
+                obs, action_mask=self.get_masked_actions(obs)
+            )
+            new_obs, reward, done, _, info = self.env.step(action)
+            self.model.remember(obs, action, log_probs, value, reward, done)
+            obs = new_obs
+
+            if done:
+                obs = self.env.reset()[0]
+                self.model.learn()
+                self.model.memory.clear_memory()
 
     def save(self, path):
-        self.model.save(path)
+        self.model.save_models()
 
     def load(self, path):
-        self.model = PPO.load(path)
+        self.model.load_models()
 
     def evaluate(self, steps):
         obs, *vals = self.env.reset()
         for i in range(steps):
-            action, _states = self.model.predict(obs)
+            action, _, _ = self.model.choose_action(
+                obs, action_mask=self.get_masked_actions(obs)
+            )
             obs, rewards, dones, info, *vals = self.env.step(action)
             self.env.render()
 
     def update_lr(self):
-        learning_rates = [0.00005, 0.0001, 0.0003]
-        current_lr = self.model.learning_rate
-        new_lr_index = learning_rates.index(current_lr) + 1
-        if new_lr_index >= len(learning_rates):
-            new_lr_index = 0
-        new_lr = learning_rates[new_lr_index]
-        self.model.learning_rate = new_lr
-        self.logger.set_lr(new_lr)
+        # learning_rates = [0.00005, 0.0001, 0.0003]
+        # current_lr = self.model.actor.optimizer.param_groups[0]["lr"]
+        # new_lr_index = (learning_rates.index(current_lr) + 1) % len(learning_rates)
+        # new_lr = learning_rates[new_lr_index]
+        # self.model.actor.optimizer.param_groups[0]["lr"] = new_lr
+        # self.model.critic.optimizer.param_groups[0]["lr"] = new_lr
+        # self.logger.set_lr(new_lr)
+        pass
 
     def evaluate_games(self, games, opponent_policy=None, verbose=1):
         training_opponent_policy = self.env.unwrapped.opponent_policy
@@ -68,14 +81,13 @@ class PPOAgent:
         board = None
         player = 0
 
-        for i in range(games):
+        for i in tqdm(range(games), desc="Evaluation Progress"):
             done = False
             while not done:
-                action, _states = self.model.predict(
-                    obs, action_masks=self.env.unwrapped.get_masked_actions(obs)
+                action, _, _ = self.model.choose_action(
+                    obs, action_mask=self.get_masked_actions(obs)
                 )
                 obs, rewards, done, info, winner_dict = self.env.step(action)
-                # print(winner_dict)
                 winner = winner_dict.get("winner", 0)
                 board = winner_dict.get("board", None)
                 player = winner_dict.get("player", 0)
@@ -93,9 +105,8 @@ class PPOAgent:
 
         if verbose >= 1:
             print(
-                f"\nWin rate: {( len(wins) / games)*100:.2f}% - ({len(wins)}/{games})"
+                f"\nWin rate: {(len(wins) / games) * 100:.2f}% - ({len(wins)}/{games})"
             )
-
             print(f"White wins: {wins.count(1)}")
             print(f"Black wins: {wins.count(-1)}")
 
@@ -107,8 +118,8 @@ class PPOAgent:
         }
 
     def get_action(self, board, *args, **kwargs):
-        action, _states = self.model.predict(
-            board, action_masks=self.get_masked_actions(board)
+        action, _, _ = self.model.choose_action(
+            board, action_mask=self.get_masked_actions(board)
         )
         return action
 

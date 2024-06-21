@@ -67,7 +67,7 @@ def main(args):
 
         # Load if you have a trained model
         env = HexEnv(size=board_size, opponent_policy=opponent_policy)
-        env = ActionMasker(env, lambda env: env.unwrapped.get_masked_actions())
+        # env = ActionMasker(env, lambda env: env.unwrapped.get_masked_actions())
 
         if most_recent_model is not None:
             print("\nLoading most recent model")
@@ -188,7 +188,7 @@ if __name__ == "__main__":
         "-ts",
         "--training_steps",
         type=int,
-        default=30000,
+        default=20000,
         help="Number of training steps",
     )
 
