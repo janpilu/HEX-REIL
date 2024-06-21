@@ -125,6 +125,14 @@ class PPOActor(nn.Module):
             nn.Softmax(dim=-1),
         )
 
+        if features_extractor is not None:
+            self.fc2 = nn.Sequential(
+                nn.Linear(fc1_dims, fc2_dims),
+                nn.ReLU(),
+                nn.Linear(fc2_dims, n_actions),
+                nn.Softmax(dim=-1),
+            )
+
         self.optimizer = optim.AdamW(self.parameters(), lr=alpha)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to(self.device)
@@ -169,6 +177,13 @@ class PPOCritic(nn.Module):
             nn.ReLU(),
             nn.Linear(fc2_dims, 1),
         )
+
+        if features_extractor is not None:
+            self.fc2 = nn.Sequential(
+                nn.Linear(fc1_dims, fc2_dims),
+                nn.ReLU(),
+                nn.Linear(fc2_dims, 1),
+            )
 
         self.apply(init_weights)
         self.optimizer = optim.AdamW(self.parameters(), lr=alpha)

@@ -29,7 +29,12 @@ class PPOAgent:
         input_dims = self.env.observation_space.shape
         n_actions = self.env.action_space.n
         self.model = PPO(
-            n_actions, input_dims, alpha=0.0003, batch_size=128, use_conv=False
+            n_actions,
+            input_dims,
+            alpha=0.0003,
+            batch_size=64,
+            ent_coef=0.01,
+            use_conv=True,
         )
 
     def train(self, steps):
@@ -49,7 +54,7 @@ class PPOAgent:
                 game += 1
                 # self.model.learn()
                 # self.model.memory.clear_memory()
-                if game % 250 == 0:
+                if game % 500 == 0:
                     self.model.learn()
         while not done:
             action, log_probs, value = self.model.choose_action(
