@@ -28,11 +28,15 @@ class PPOAgent:
     def init_model(self):
         input_dims = self.env.observation_space.shape
         n_actions = self.env.action_space.n
-        self.model = PPO(n_actions, input_dims, alpha=0.0003, use_conv=True)
+        self.model = PPO(
+            n_actions, input_dims, alpha=0.0003, batch_size=128, use_conv=False
+        )
 
     def train(self, steps):
         obs = self.env.reset()[0]
-        for _ in tqdm(range(steps), desc="Training Progress"):
+        game = 0
+        done = False
+        for _ in tqdm(range(steps), desc="Collecting Game Data"):
             action, log_probs, value = self.model.choose_action(
                 obs, action_mask=self.get_masked_actions(obs)
             )
@@ -42,8 +46,21 @@ class PPOAgent:
 
             if done:
                 obs = self.env.reset()[0]
-                self.model.learn()
-                self.model.memory.clear_memory()
+                game += 1
+                # self.model.learn()
+                # self.model.memory.clear_memory()
+                if game % 250 == 0:
+                    self.model.learn()
+        while not done:
+            action, log_probs, value = self.model.choose_action(
+                obs, action_mask=self.get_masked_actions(obs)
+            )
+            new_obs, reward, done, _, info = self.env.step(action)
+            self.model.remember(obs, action, log_probs, value, reward, done)
+            obs = new_obs
+
+        self.env.reset()
+        self.model.learn()
 
     def save(self, path):
         self.model.save_models()

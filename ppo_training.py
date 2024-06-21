@@ -215,7 +215,7 @@ if __name__ == "__main__":
         "-et",
         "--evaluation_threshold",
         type=int,
-        default=57,
+        default=70,
         help="Percent to reach before stopping training",
     )
 

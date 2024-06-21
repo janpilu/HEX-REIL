@@ -7,6 +7,7 @@ import math
 import numpy as np
 import os
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 
 def init_weights(module, gain=1.0):
@@ -105,6 +106,7 @@ class PPOActor(nn.Module):
         n_actions,
         alpha,
         features_extractor=None,
+        input_dims=1,
         fc1_dims=256,
         fc2_dims=256,
         checkpoint_dir="tmp/ppo",
@@ -115,6 +117,8 @@ class PPOActor(nn.Module):
         self.checkpoint_file = os.path.join(checkpoint_dir, "actor_ppo")
 
         self.fc2 = nn.Sequential(
+            nn.Linear(input_dims[0] * input_dims[1], fc1_dims),
+            nn.ReLU(),
             nn.Linear(fc1_dims, fc2_dims),
             nn.ReLU(),
             nn.Linear(fc2_dims, n_actions),
@@ -127,8 +131,12 @@ class PPOActor(nn.Module):
         self.apply(init_weights)
 
     def forward(self, state):
-        state = state.unsqueeze(1)
-        features = self.features_extractor(state)
+        features = state
+        if self.features_extractor is not None:
+            state = state.unsqueeze(1)
+            features = self.features_extractor(state)
+        else:
+            features = state.view(state.size(0), -1)
         dist = self.fc2(features)
         return dist
 
@@ -144,6 +152,7 @@ class PPOCritic(nn.Module):
         self,
         alpha,
         features_extractor=None,
+        input_dims=1,
         fc1_dims=256,
         fc2_dims=256,
         checkpoint_dir="tmp/ppo",
@@ -154,7 +163,11 @@ class PPOCritic(nn.Module):
 
         self.features_extractor = features_extractor
         self.fc2 = nn.Sequential(
-            nn.Linear(fc1_dims, fc2_dims), nn.ReLU(), nn.Linear(fc2_dims, 1)
+            nn.Linear(input_dims[0] * input_dims[1], fc1_dims),
+            nn.ReLU(),
+            nn.Linear(fc1_dims, fc2_dims),
+            nn.ReLU(),
+            nn.Linear(fc2_dims, 1),
         )
 
         self.apply(init_weights)
@@ -163,8 +176,13 @@ class PPOCritic(nn.Module):
         self.to(self.device)
 
     def forward(self, state):
-        state = state.unsqueeze(1)
-        features = self.features_extractor(state)
+        features = state
+        if self.features_extractor is not None:
+            state = state.unsqueeze(1)
+            features = self.features_extractor(state)
+        else:
+            features = state.view(state.size(0), -1)
+
         value = self.fc2(features)
         return value
 
@@ -191,7 +209,7 @@ class PPO:
         gae_lambda=0.95,
         policy_clip=0.2,
         batch_size=64,
-        n_epochs=5,
+        n_epochs=10,
         fc1_dims=256,
         fc2_dims=256,
         linear_increase_steps=4000,  # Number of steps for linear increase
@@ -215,12 +233,11 @@ class PPO:
                 input_dims, conv_channels=[16, 32, 64], fc_dims=fc1_dims
             ).to(self.device)
         else:
-            self.features_extractor = nn.Linear(input_dims[0], fc1_dims).to(
-                self.device
-            )  # No feature extraction for non-conv case
+            self.features_extractor = None
 
         self.actor = PPOActor(
             n_actions,
+            input_dims=input_dims,
             alpha=alpha,
             features_extractor=self.features_extractor,
             fc1_dims=fc1_dims,
@@ -228,6 +245,7 @@ class PPO:
         )
         self.critic = PPOCritic(
             alpha=alpha,
+            input_dims=input_dims,
             features_extractor=self.features_extractor,
             fc1_dims=fc1_dims,
             fc2_dims=fc2_dims,
@@ -323,7 +341,7 @@ class PPO:
 
     def learn(self):
         step = 0
-        for _ in range(self.n_epochs):
+        for _ in tqdm(range(self.n_epochs), desc="Training Progress"):
             (
                 state_arr,
                 action_arr,
@@ -337,6 +355,7 @@ class PPO:
             values = values_arr
             advantage = np.zeros(len(reward_arr), dtype=np.float32)
 
+            # Calculate advantages using GAE
             for t in range(len(reward_arr) - 1):
                 discount = 1
                 a_t = 0
@@ -352,14 +371,17 @@ class PPO:
 
             values = torch.tensor(values).to(self.actor.device)
 
+            # Convert arrays to tensors outside of the loop
+            state_tensor = torch.tensor(state_arr, dtype=torch.float32).to(
+                self.actor.device
+            )
+            old_logprobs_tensor = torch.tensor(old_logprobs_arr).to(self.actor.device)
+            action_tensor = torch.tensor(action_arr).to(self.actor.device)
+
             for batch in batches:
-                states = torch.tensor(state_arr[batch], dtype=torch.float32).to(
-                    self.actor.device
-                )
-                old_logprobs = torch.tensor(old_logprobs_arr[batch]).to(
-                    self.actor.device
-                )
-                actions = torch.tensor(action_arr[batch]).to(self.actor.device)
+                states = state_tensor[batch]
+                old_logprobs = old_logprobs_tensor[batch]
+                actions = action_tensor[batch]
 
                 dist = self.actor(states)
                 critic_value = self.critic(states)
@@ -397,10 +419,9 @@ class PPO:
 
                 self.actor.optimizer.step()
                 self.critic.optimizer.step()
-
                 # Step the schedulers
-                # self.actor_scheduler.step()
-                # self.critic_scheduler.step()
+                self.actor_scheduler.step()
+                self.critic_scheduler.step()
 
                 # self.log_metrics(
                 #     total_loss, actor_loss, critic_loss, entropy_loss, step
