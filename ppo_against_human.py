@@ -4,7 +4,7 @@ import numpy as np
 import random
 
 from datetime import datetime
-from modules.ppo_agent import PPOAgent
+from modules.agents.ppo_agent import PPOAgent
 from modules.hex_env import HexEnv
 from pathlib import Path
 from sb3_contrib.common.wrappers import ActionMasker

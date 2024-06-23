@@ -356,7 +356,7 @@ class PPO:
 
     def learn(self):
         step = 0
-        for _ in tqdm(range(self.n_epochs), desc="Training Progress"):
+        for _ in range(self.n_epochs):
             (
                 state_arr,
                 action_arr,

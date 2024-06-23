@@ -6,7 +6,7 @@ import numpy as np
 
 from pathlib import Path
 from modules.logger import EvaluationLogger
-from modules.agents.ppo_agent import PPOAgent
+from modules.agents.dql_agent import DQLAgent
 from modules.hex_env import HexEnv
 from datetime import datetime
 
@@ -44,10 +44,14 @@ def main(args):
 
         policies = []
 
+        env = HexEnv(size=board_size)
+
+        include_most_recent = run_number % 2 == 0
+
         if len(models) > 0 and not args.against_random:
             print("Loading models")
             policies, model_files = train_modules.get_policies(
-                model_folder, include_most_recent=False
+                model_folder, DQLAgent, env, include_most_recent=include_most_recent
             )
             opponent_policy = train_modules.get_opponent_policy(
                 policies, model_files, args.number_of_policies
@@ -62,22 +66,22 @@ def main(args):
                 action_set
             )  # <-- Modified to accept three arguments
 
+        env.set_opponent_policy(opponent_policy)
         logger = EvaluationLogger(f"training-{timestamp}.csv")
-        agent = PPOAgent(logger=logger)
+        agent = DQLAgent(logger=logger)
 
         # Load if you have a trained model
-        env = HexEnv(size=board_size, opponent_policy=opponent_policy)
         # env = ActionMasker(env, lambda env: env.unwrapped.get_masked_actions())
 
         if most_recent_model is not None:
             print("\nLoading most recent model")
-            agent.load(f"{model_folder}/{most_recent_model}")
             agent.set_env(env)
+            agent.load(f"{model_folder}/{most_recent_model}")
             print(f"Model loaded, continuing training from {most_recent_model}")
 
-            evaluation_agent = PPOAgent()
-            evaluation_agent.load(f"{model_folder}/{most_recent_model}")
+            evaluation_agent = DQLAgent()
             evaluation_agent.set_env(env)
+            evaluation_agent.load(f"{model_folder}/{most_recent_model}")
 
         else:
             print("Creating new model")
@@ -85,14 +89,23 @@ def main(args):
             agent.init_model()
 
             # define random agent for evaluation
-            evaluation_agent = PPOAgent()
+            evaluation_agent = DQLAgent()
             evaluation_agent.set_env(env)
             evaluation_agent.init_model()  # Ensure evaluation model is initialized
 
+        agent_checkpoint = agent
+
         score = -1
         training_round = 0
+        scores = []
 
         while score < args.evaluation_threshold / 100:
+
+            if training_round >= 10:
+                mean_score = np.mean(scores[-10:])
+                if mean_score < 0.35:
+                    print("Score is less than 35%, stopping training")
+                    agent = agent_checkpoint
 
             if training_round != 0:
                 # if training_round % args.lr_update_threshold == 0:
@@ -131,6 +144,7 @@ def main(args):
                 verbose=1,
             )
             score = results["win_rate"]
+            scores.append(score)
 
             if (
                 results["black_wins"]
@@ -217,7 +231,7 @@ if __name__ == "__main__":
         "-et",
         "--evaluation_threshold",
         type=int,
-        default=70,
+        default=60,
         help="Percent to reach before stopping training",
     )
 
@@ -259,7 +273,7 @@ if __name__ == "__main__":
         "-ft",
         "--focus_threshold",
         type=int,
-        default=20,
+        default=30,
         help="Threshold for focusing on player",
     )
 

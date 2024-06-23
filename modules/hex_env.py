@@ -49,7 +49,7 @@ class HexEnv(gym.Env):
         done = self.hex.winner != 0
 
         # If the game is not done, let the opponent make a move
-        if not done and self.opponent_policy is not None:
+        if not done:
             self.opponent_action()
             done = self.hex.winner != 0
 
@@ -64,16 +64,12 @@ class HexEnv(gym.Env):
             winner = self.hex.winner
             player = self.current_player
             winning_board = self.hex.board.copy()
-            self.hex.reset()
             self.current_game += 1
             self.current_player_index = self.current_player_index + 1
             if self.current_player_index >= len(self.players):
                 self.current_player_index = 0
             self.current_player = self.players[self.current_player_index]
-
-            # Let opponent make the first move if he is playing as white
-            if self.current_player == -1:
-                self.opponent_action()
+            self.reset()
 
         return (
             self.get_corrected_board(),  # Return the current board state without correction

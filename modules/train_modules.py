@@ -3,7 +3,7 @@ import os
 
 from datetime import datetime
 from scipy.stats import norm
-from modules.ppo_agent import PPOAgent
+from modules.agents.ppo_agent import PPOAgent
 
 
 def gaussian_probabilities(n, shift=2):
@@ -22,8 +22,8 @@ def get_sorted_models(folder_path):
     # Get all files in the directory
     files = os.listdir(folder_path)
 
-    # Filter out files that are not models (not ending with .zip)
-    model_files = [f for f in files if f.endswith(".zip")]
+    # model_files = [f for f in files if f.endswith(extension)]
+    model_files = [f for f in files]
 
     # Sort the model files based on the timestamp in their name
     sorted_models = sorted(
@@ -34,7 +34,7 @@ def get_sorted_models(folder_path):
     return sorted_models
 
 
-def get_policies(folder_path, include_most_recent=False):
+def get_policies(folder_path, agent_class, env, include_most_recent=False):
 
     sorted_models = get_sorted_models(folder_path)
     opponent_policies = []
@@ -45,13 +45,14 @@ def get_policies(folder_path, include_most_recent=False):
 
     if len(sorted_models) >= 1:
         for model in sorted_models:
-            agent = PPOAgent()
+            agent = agent_class()
+            agent.set_env(env)
             agent.load(f"{folder_path}/{model}")
             opponent_policies.append(agent.get_action)
             model_files.append(model)
 
     else:
-        agent = PPOAgent()
+        agent = agent_class()
         agent.load(f"{folder_path}/{sorted_models[0]}")
         opponent_policies.append(agent.get_action)
         model_files.append(sorted_models[0])
@@ -76,4 +77,4 @@ def get_opponent_policy(policies, model_files, number_of_policies=10):
     return lambda board, action_set, current_game: selected_policies[
         (current_game // 2)
         % number_of_policies  # // 2 to ensure that the same policy is used for two games (both as white and black)
-    ](board, action_set)
+    ](board)
