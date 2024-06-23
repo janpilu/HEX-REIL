@@ -10,12 +10,6 @@ class Agent(ABC):
         self.model = None
         self.logger = logger
 
-    def get_action(
-        self,
-        board,
-    ):
-        pass
-
     def set_env(self, env):
         self.env = env
 
@@ -97,10 +91,31 @@ class Agent(ABC):
     def set_opponent_policy(self, opponent_policy):
         self.env.set_opponent_policy(opponent_policy)
 
+    def check_current_player(self, board):
+        black = 0
+        white = 0
+        for row in board:
+            black += row.count(-1)
+            white += row.count(1)
+
+        return 1 if white == black else -1
+
     @abstractmethod
     def init_model(self):
         pass
 
     @abstractmethod
     def train(self, steps):
+        pass
+
+    @abstractmethod
+    def get_action(
+        self,
+        board,
+        **kwargs,
+    ):
+        pass
+
+    @abstractmethod
+    def policy(self, board, action_set):
         pass

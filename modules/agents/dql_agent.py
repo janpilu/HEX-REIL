@@ -1,12 +1,16 @@
 import math
 from tqdm import tqdm
+from fhtw_hex.hex_engine import hexPosition
 from modules.agents.agent import Agent
 from modules.dql import DQL
 
 
 class DQLAgent(Agent):
-    def __init__(self, logger=None):
+    def __init__(self, logger=None, hidden_layers=2, hidden_size=256, use_conv=False):
         super().__init__(logger)
+        self.hidden_layers = hidden_layers
+        self.hidden_size = hidden_size
+        self.use_conv = use_conv
 
     def init_model(self):
         input_dims = self.env.observation_space.shape
@@ -17,6 +21,9 @@ class DQLAgent(Agent):
             lr=0.0003,
             batch_size=64,
             target_update=10,
+            use_conv=self.use_conv,
+            hidden_layers=self.hidden_layers,
+            hidden_size=self.hidden_size,
         )
 
     def train(self, episodes=1000):
@@ -50,3 +57,19 @@ class DQLAgent(Agent):
             board, action_mask=self.get_masked_actions(board), epsilon=epsilon
         )
         return action
+
+    def policy(self, board, action_set):
+        engine = hexPosition(len(board))
+        engine.board = board
+        current_player = self.check_current_player(board)
+        action = None
+        coordinates = []
+        if current_player == 1:
+            action = self.get_action(board, epsilon=0)
+            coordinates = engine.scalar_to_coordinates(action)
+        else:
+            action = self.get_action(engine.recode_black_as_white(), epsilon=0)
+            coordinates = engine.recode_coordinates(
+                engine.scalar_to_coordinates(action)
+            )
+        return coordinates

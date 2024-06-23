@@ -3,7 +3,10 @@ import os
 
 from datetime import datetime
 from scipy.stats import norm
+from modules.agents.dql_agent import DQLAgent
 from modules.agents.ppo_agent import PPOAgent
+import config
+from modules.hex_env import HexEnv
 
 
 def gaussian_probabilities(n, shift=2):
@@ -45,14 +48,22 @@ def get_policies(folder_path, agent_class, env, include_most_recent=False):
 
     if len(sorted_models) >= 1:
         for model in sorted_models:
-            agent = agent_class()
+            agent = agent_class(
+                hidden_layers=config.hidden_layers,
+                hidden_size=config.hidden_size,
+                use_conv=config.use_conv,
+            )
             agent.set_env(env)
             agent.load(f"{folder_path}/{model}")
             opponent_policies.append(agent.get_action)
             model_files.append(model)
 
     else:
-        agent = agent_class()
+        agent = agent_class(
+            hidden_layers=config.hidden_layers,
+            hidden_size=config.hidden_size,
+            use_conv=config.use_conv,
+        )
         agent.load(f"{folder_path}/{sorted_models[0]}")
         opponent_policies.append(agent.get_action)
         model_files.append(sorted_models[0])
@@ -78,3 +89,52 @@ def get_opponent_policy(policies, model_files, number_of_policies=10):
         (current_game // 2)
         % number_of_policies  # // 2 to ensure that the same policy is used for two games (both as white and black)
     ](board)
+
+
+def get_agents(board_size, root_folder=None):
+    if root_folder is None:
+        root_folder = f"./models/{board_size}x{board_size}"
+    os.makedirs(root_folder, exist_ok=True)
+    env = HexEnv(size=board_size)
+
+    agents = {}
+
+    for model in config.models:
+        model_folder = f"{root_folder}/{model}"
+        os.makedirs(model_folder, exist_ok=True)
+        agent_class = None
+
+        if model == "dql":
+            agent_class = DQLAgent
+
+        elif model == "ppo":
+            agent_class = PPOAgent
+
+        agents[model] = {}
+
+        for architecture_folder in os.listdir(model_folder):
+            print(architecture_folder)
+            architectre_path = f"{model_folder}/{architecture_folder}"
+            if os.path.isdir(architectre_path):
+                print(f"Loading {model} agents from {architecture_folder}")
+                layers, size, architectre = architecture_folder.split("_")
+                hidden_layers = int(layers)
+                hidden_size = int(size)
+                use_conv = architectre == "conv"
+
+                agents[model][architecture_folder] = []
+
+                if agent_class is not None:
+                    for model_file in os.listdir(architectre_path):
+                        agent = agent_class(
+                            hidden_layers=hidden_layers,
+                            hidden_size=hidden_size,
+                            use_conv=use_conv,
+                        )
+                        agent.set_env(env)
+                        agent.load(f"{architectre_path}/{model_file}")
+                        agents[model][architecture_folder].append(
+                            {"agent": agent, "path": f"{architectre_path}/{model_file}"}
+                        )
+
+    return agents

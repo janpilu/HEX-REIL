@@ -4,17 +4,29 @@ import torch.optim as optim
 import random
 import numpy as np
 from collections import deque
-import gym
+import itertools
 
 
 class QNetwork(nn.Module):
-    def __init__(self, input_dims, n_actions, hidden_size=256):
+    def __init__(
+        self, input_dims, n_actions, hidden_layers=2, hidden_size=256, use_conv=False
+    ):
         super(QNetwork, self).__init__()
+
         self.fc = nn.Sequential(
-            nn.Linear(input_dims[0] * input_dims[1], hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
+            *itertools.chain.from_iterable(
+                [
+                    [
+                        (
+                            nn.Linear(input_dims[0] * input_dims[1], hidden_size)
+                            if i == 0
+                            else nn.Linear(hidden_size, hidden_size)
+                        ),
+                        nn.ReLU(),
+                    ]
+                    for i in range(hidden_layers)
+                ]
+            ),
             nn.Linear(hidden_size, n_actions),
         )
 
@@ -29,6 +41,8 @@ class DQL:
         input_dims,
         n_actions,
         hidden_size=256,
+        hidden_layers=2,
+        use_conv=False,
         gamma=0.99,
         lr=1e-4,
         batch_size=64,
@@ -42,8 +56,21 @@ class DQL:
         self.target_update = target_update
         self.memory = deque(maxlen=buffer_size)
 
-        self.q_network = QNetwork(input_dims, n_actions, hidden_size)
-        self.target_network = QNetwork(input_dims, n_actions, hidden_size)
+        self.q_network = QNetwork(
+            input_dims,
+            n_actions,
+            hidden_size=hidden_size,
+            hidden_layers=hidden_layers,
+            use_conv=use_conv,
+        )
+        self.target_network = QNetwork(
+            input_dims,
+            n_actions,
+            hidden_size=hidden_size,
+            hidden_layers=hidden_layers,
+            use_conv=use_conv,
+        )
+
         self.optimizer = optim.AdamW(self.q_network.parameters(), lr=lr)
 
         self.update_target_network()

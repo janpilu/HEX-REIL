@@ -337,7 +337,9 @@ class hexPosition(object):
         assert 0 <= coord2 and self.size - 1 >= coord2, "The scalar input is invalid."
         return (coord1, coord2)
 
-    def machine_vs_machine(self, machine1=None, machine2=None):
+    def machine_vs_machine(
+        self, machine1=None, machine2=None, autoplay=False, verbose=2
+    ):
         """
         Let two AIs play a game against each other.
         The variables machine1 and machine2 must point to a function that maps a board state and an action set to an element of the action set.
@@ -362,19 +364,23 @@ class hexPosition(object):
         # the match
         self.reset()
         while self.winner == 0:
-            self.print()
-            input("Press ENTER to continue.")
+            if verbose >= 2:
+                self.print()
+            if not autoplay:
+                input("Press ENTER to continue.")
             if self.player == 1:
                 chosen = machine1(self.board, self.get_action_space())
             if self.player == -1:
                 chosen = machine2(self.board, self.get_action_space())
             self.move(chosen)
             if self.winner == 1:
-                self.print()
-                self._evaluate_white(verbose=True)
+                if verbose >= 1:
+                    self.print()
+                    self._evaluate_white(verbose=True)
             if self.winner == -1:
-                self.print()
-                self._evaluate_black(verbose=True)
+                if verbose >= 1:
+                    self.print()
+                    self._evaluate_black(verbose=True)
 
     def replay_history(self):
         """

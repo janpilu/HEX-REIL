@@ -6,10 +6,13 @@ from fhtw_hex.hex_engine import hexPosition
 
 
 class PPOAgent(Agent):
-    def __init__(self, logger=None):
+    def __init__(self, logger=None, hidden_layers=2, hidden_size=256, use_conv=False):
         self.env = None
         self.model = None
         self.logger = logger
+        self.hidden_layers = hidden_layers
+        self.hidden_size = hidden_size
+        self.use_conv = use_conv
 
     def set_opponent_policy(self, opponent_policy):
         self.env.set_opponent_policy(opponent_policy)
@@ -23,7 +26,9 @@ class PPOAgent(Agent):
             alpha=0.0003,
             batch_size=64,
             ent_coef=0.01,
-            use_conv=True,
+            use_conv=self.use_conv,
+            hidden_layers=self.hidden_layers,
+            hidden_size=self.hidden_size,
         )
 
     def train(self, episodes=1000):

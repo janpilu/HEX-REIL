@@ -5,6 +5,7 @@ import numpy as np
 
 
 from pathlib import Path
+from modules.agents.ppo_agent import PPOAgent
 from modules.logger import EvaluationLogger
 from modules.agents.dql_agent import DQLAgent
 from modules.hex_env import HexEnv
@@ -14,6 +15,10 @@ from sb3_contrib.common.wrappers import ActionMasker
 
 # load train module
 import modules.train_modules as train_modules
+
+import config
+
+agent_class = DQLAgent if config.model == "dql" else PPOAgent
 
 
 def main(args):
@@ -34,7 +39,9 @@ def main(args):
         # main folder for models
         os.makedirs("./models", exist_ok=True)
 
-        model_folder = f"./models/{board_size}x{board_size}"
+        conv_flag = "conv" if config.use_conv else "fc"
+
+        model_folder = f"./models/{board_size}x{board_size}/{config.model}/{config.hidden_layers}_{config.hidden_size}_{conv_flag}"
         os.makedirs(model_folder, exist_ok=True)
 
         model_path = f"{model_folder}/{timestamp}_{model}"
@@ -51,7 +58,7 @@ def main(args):
         if len(models) > 0 and not args.against_random:
             print("Loading models")
             policies, model_files = train_modules.get_policies(
-                model_folder, DQLAgent, env, include_most_recent=include_most_recent
+                model_folder, agent_class, env, include_most_recent=include_most_recent
             )
             opponent_policy = train_modules.get_opponent_policy(
                 policies, model_files, args.number_of_policies
@@ -68,7 +75,12 @@ def main(args):
 
         env.set_opponent_policy(opponent_policy)
         logger = EvaluationLogger(f"training-{timestamp}.csv")
-        agent = DQLAgent(logger=logger)
+        agent = agent_class(
+            logger=logger,
+            hidden_layers=config.hidden_layers,
+            hidden_size=config.hidden_size,
+            use_conv=config.use_conv,
+        )
 
         # Load if you have a trained model
         # env = ActionMasker(env, lambda env: env.unwrapped.get_masked_actions())
@@ -79,9 +91,20 @@ def main(args):
             agent.load(f"{model_folder}/{most_recent_model}")
             print(f"Model loaded, continuing training from {most_recent_model}")
 
-            evaluation_agent = DQLAgent()
+            evaluation_agent = agent_class(
+                hidden_layers=config.hidden_layers,
+                hidden_size=config.hidden_size,
+                use_conv=config.use_conv,
+            )
+
             evaluation_agent.set_env(env)
-            evaluation_agent.load(f"{model_folder}/{most_recent_model}")
+            if args.against_random:
+                print("Playing against random")
+                evaluation_agent.init_model()
+            else:
+                print("Loading most recent model for evaluation")
+                print(f"Loading {model_folder}/{most_recent_model}")
+                evaluation_agent.load(f"{model_folder}/{most_recent_model}")
 
         else:
             print("Creating new model")
@@ -89,7 +112,7 @@ def main(args):
             agent.init_model()
 
             # define random agent for evaluation
-            evaluation_agent = DQLAgent()
+            evaluation_agent = agent_class()
             evaluation_agent.set_env(env)
             evaluation_agent.init_model()  # Ensure evaluation model is initialized
 
@@ -108,12 +131,7 @@ def main(args):
                     agent = agent_checkpoint
 
             if training_round != 0:
-                # if training_round % args.lr_update_threshold == 0:
-                # print(
-                #     f"{args.lr_update_threshold} rounds have passed without reaching threshold"
-                # )
-                # print("Updating learning rate")
-                # agent.update_lr()
+
                 if (
                     len(policies) > args.number_of_policies
                     and training_round % (args.lr_update_threshold * 3) == 0
@@ -141,7 +159,7 @@ def main(args):
             results = agent.evaluate_games(
                 args.evaluation_steps,
                 lambda board, _, __: evaluation_agent.get_action(board),
-                verbose=1,
+                verbose=3,
             )
             score = results["win_rate"]
             scores.append(score)
@@ -166,9 +184,13 @@ def main(args):
                 print(f"White and black wins greater than {args.focus_threshold}%")
                 agent.focus_on_player([1, -1])
 
+            if args.skip_training:
+                break
+
+        if args.skip_training:
+            break
         print("\nSaving model!\n")
         agent.save(model_path)
-
         print(f"Run {run_number + 1} out of {number_of_runs} completed\n\n\n")
     logger.close()
 
