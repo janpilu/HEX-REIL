@@ -45,21 +45,9 @@ def evaluate_agent(board_size, agent, path, opponents):
     return results
 
 
-def tournament(board_size):
-    agents = get_agents(board_size)
-    agent_path_map = {}
-    all_results = []
-    for model, architectures in agents.items():
-        for architecture, agent_datas in architectures.items():
-            for agent_data in agent_datas:
-                agent = agent_data["agent"]
-                agent_path = agent_data["path"]
-                agent_path_map[agent_path] = agent
-                results = evaluate_agent(board_size, agent, agent_path, agents)
-                all_results.extend(results)
-
+def score_to_df(score):
     # Create DataFrame
-    df = pd.DataFrame(all_results)
+    df = pd.DataFrame(score)
 
     # Aggregate results to get wins and losses
     summary_df = df.groupby(["agent_path", "color"]).win.sum().unstack().fillna(0)
@@ -73,6 +61,23 @@ def tournament(board_size):
 
     # Sort by total wins
     summary_df = summary_df.sort_values("total_wins", ascending=False)
+    return summary_df
+
+
+def tournament(board_size):
+    agents = get_agents(board_size)
+    agent_path_map = {}
+    all_results = []
+    for model, architectures in agents.items():
+        for architecture, agent_datas in architectures.items():
+            for agent_data in agent_datas:
+                agent = agent_data["agent"]
+                agent_path = agent_data["path"]
+                agent_path_map[agent_path] = agent
+                results = evaluate_agent(board_size, agent, agent_path, agents)
+                all_results.extend(results)
+
+    summary_df = score_to_df(all_results)
 
     save_best_models(summary_df, agent_path_map)
 
@@ -100,7 +105,7 @@ def save_best_models(summary_df, agents_path_map):
     for index, row in best_merge.iterrows():
         agent_path = row["agent_path"]
         agent = agents_path_map[agent_path]
-        agent_dir = f'models/winner/{agent_path.split("/")[-2]}'
+        agent_dir = f'models/{agent_path.split("/")[-4]}/winner/{agent_path.split("/")[-3]}/{agent_path.split("/")[-2]}'
         agent_path = f'{agent_dir}/{agent_path.split("/")[-1]}'
 
         os.makedirs(agent_dir, exist_ok=True)
@@ -111,6 +116,11 @@ def save_best_models(summary_df, agents_path_map):
     print("Best models saved!")
 
 
-# Run the tournament
-results_df = tournament(7)
-print(results_df)
+# tournament_df = tournament(7)
+# # delete models with a total win less than 100
+
+# paths = tournament_df[tournament_df["total_wins"] < 100]["agent_path"]
+
+# for path in paths:
+#     os.remove(path)
+#     print(f"Deleted {path}")
