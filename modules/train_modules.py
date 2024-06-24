@@ -91,13 +91,14 @@ def get_opponent_policy(policies, model_files, number_of_policies=10):
     ](board)
 
 
-def get_agents(board_size, root_folder=None):
+def get_agents(board_size, root_folder=None, as_path_agent_dict=False):
     if root_folder is None:
         root_folder = f"./models/{board_size}x{board_size}"
     os.makedirs(root_folder, exist_ok=True)
     env = HexEnv(size=board_size)
 
     agents = {}
+    path_agent_dict = {}
 
     for model in config.models:
         model_folder = f"{root_folder}/{model}"
@@ -136,5 +137,8 @@ def get_agents(board_size, root_folder=None):
                         agents[model][architecture_folder].append(
                             {"agent": agent, "path": f"{architectre_path}/{model_file}"}
                         )
+                        path_agent_dict[f"{architectre_path}/{model_file}"] = agent
 
+    if as_path_agent_dict:
+        return path_agent_dict
     return agents

@@ -157,16 +157,33 @@ def main(args):
             print(f"Evaluating model against most recent model ({most_recent_model})")
             agent.focus_on_player([1, -1])
             results = agent.evaluate_games(
-                args.evaluation_steps,
+                args.number_of_policies * 2,
+                # args.evaluation_steps,
+                # lambda board, _, __: evaluation_agent.get_action(board),
+                verbose=3,
+            )
+            results_self = agent.evaluate_games(
+                2,
                 lambda board, _, __: evaluation_agent.get_action(board),
                 verbose=3,
             )
+
+            n_eval_games = args.number_of_policies * 2 + 2
+
+            results_total = {
+                "win_rate": (results["win_rate"] + results_self["win_rate"]) / 2,
+                "white_wins": results["white_wins"] + results_self["white_wins"],
+                "black_wins": results["black_wins"] + results_self["black_wins"],
+            }
+
+            results = results_total
+
             score = results["win_rate"]
             scores.append(score)
 
             if (
                 results["black_wins"]
-                < args.evaluation_steps * score * args.focus_threshold / 100
+                < number_of_runs * score * args.focus_threshold / 100
             ):
                 print(
                     f"Black wins less than {args.focus_threshold}% focus on black player"
@@ -174,7 +191,7 @@ def main(args):
                 agent.focus_on_player([-1])
             elif (
                 results["white_wins"]
-                < args.evaluation_steps * score * args.focus_threshold / 100
+                < number_of_runs * score * args.focus_threshold / 100
             ):
                 print(
                     f"White wins less than {args.focus_threshold}% focus on white player"
@@ -253,7 +270,7 @@ if __name__ == "__main__":
         "-et",
         "--evaluation_threshold",
         type=int,
-        default=60,
+        default=65,
         help="Percent to reach before stopping training",
     )
 

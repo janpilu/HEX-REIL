@@ -2,6 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 from fhtw_hex.hex_engine import hexPosition
+import copy
 
 
 class HexEnv(gym.Env):
@@ -26,9 +27,17 @@ class HexEnv(gym.Env):
 
     def reset(self, **kwargs):
         self.hex.reset()
+        opponent_state, opponent_action, opponent_new_state = (
+            None,
+            None,
+            None,
+        )
         if self.current_player == -1:
-            self.opponent_action()
-        return self.get_corrected_board(), {}
+            opponent_state, opponent_action = self.opponent_action()
+        return self.get_corrected_board(), {
+            "opponent_state": opponent_state,
+            "opponent_action": opponent_action,
+        }
 
     def set_player(self, player):
         self.current_player = player
@@ -48,22 +57,31 @@ class HexEnv(gym.Env):
         # Check if the game is done
         done = self.hex.winner != 0
 
+        opponent_state, opponen_action = (
+            None,
+            None,
+        )
+
         # If the game is not done, let the opponent make a move
         if not done:
-            self.opponent_action()
+            opponent_state, opponen_action = self.opponent_action()
             done = self.hex.winner != 0
+        else:
+            opponent_state = self.get_corrected_board(opponent=True)
 
         reward = 0
         winner = 0
         player = 0
         winning_board = None
+        opponent_winning_board = None
 
         # If the game is done, calculate the reward and reset the board
         if done:
             reward = 1 if self.hex.winner == self.current_player else -1
             winner = self.hex.winner
             player = self.current_player
-            winning_board = self.hex.board.copy()
+            winning_board = copy.deepcopy(self.hex.board)
+            opponent_winning_board = self.get_corrected_board(opponent=True)
             self.current_game += 1
             self.current_player_index = self.current_player_index + 1
             if self.current_player_index >= len(self.players):
@@ -76,12 +94,21 @@ class HexEnv(gym.Env):
             reward,
             done,
             done,
-            {"winner": winner, "board": winning_board, "player": player},
+            {
+                "winner": winner,
+                "board": winning_board,
+                "player": player,
+                "opponent_state": opponent_state,
+                "opponent_action": opponen_action,
+                "opponent_winning_board": opponent_winning_board,
+            },
         )
 
     def opponent_action(self):
+        board = self.get_corrected_board(opponent=True)
+
         action = self.opponent_policy(
-            self.get_corrected_board(opponent=True),
+            board,
             self.get_valid_actions(opponent=True),
             self.current_game,
         )
@@ -89,6 +116,8 @@ class HexEnv(gym.Env):
         coordinates = self.convert_action_to_coordinates(action, opponent=True)
 
         self.hex.move(coordinates)
+
+        return board, action
 
     def render(self, mode="human", close=False):
         if mode == "human":
@@ -119,15 +148,15 @@ class HexEnv(gym.Env):
     def get_corrected_board(self, opponent=False):
         if opponent:
             return (
-                self.hex.board
+                copy.deepcopy(self.hex.board)
                 if self.current_player == -1
-                else self.hex.recode_black_as_white()
+                else copy.deepcopy(self.hex.recode_black_as_white())
             )
 
         return (
-            self.hex.board
+            copy.deepcopy(self.hex.board)
             if self.current_player == 1
-            else self.hex.recode_black_as_white()
+            else copy.deepcopy(self.hex.recode_black_as_white())
         )
 
     def convert_action_to_coordinates(self, action, opponent=False):

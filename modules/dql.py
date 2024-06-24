@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -47,14 +48,14 @@ class DQL:
         lr=1e-4,
         batch_size=64,
         buffer_size=15000,
-        target_update=10,
+        tau=0.01,
     ):
         self.input_dims = input_dims
         self.n_actions = n_actions
         self.gamma = gamma
         self.batch_size = batch_size
-        self.target_update = target_update
         self.memory = deque(maxlen=buffer_size)
+        self.tau = tau
 
         self.q_network = QNetwork(
             input_dims,
@@ -73,13 +74,21 @@ class DQL:
 
         self.optimizer = optim.AdamW(self.q_network.parameters(), lr=lr)
 
-        self.update_target_network()
+        self.update_target_network(hard_update=True)
 
-    def update_target_network(self):
-        self.target_network.load_state_dict(self.q_network.state_dict())
+    def update_target_network(self, hard_update=False):
+        if hard_update:
+            self.target_network.load_state_dict(self.q_network.state_dict())
+        else:
+            for target_param, param in zip(
+                self.target_network.parameters(), self.q_network.parameters()
+            ):
+                target_param.data.copy_(
+                    self.tau * param.data + (1.0 - self.tau) * target_param.data
+                )
 
-    def remember(self, state, action, reward, next_state, done):
-        self.memory.append((state, action, reward, next_state, done))
+    def remember(self, episode):
+        self.memory.append(episode)
 
     def choose_action(self, state, action_mask, epsilon=0.1):
         if random.random() < epsilon:
@@ -101,31 +110,29 @@ class DQL:
             return
 
         batch = random.sample(self.memory, self.batch_size)
-        states, actions, rewards, next_states, dones = zip(*batch)
+        for episode in batch:
+            states, actions, rewards, next_states, dones = zip(*episode)
 
-        states = np.array(states)
-        actions = np.array(actions)
-        rewards = np.array(rewards)
-        next_states = np.array(next_states)
-        dones = np.array(dones)
+            states = torch.FloatTensor(np.array(states))
+            actions = torch.LongTensor(np.array(actions)).unsqueeze(1)
+            rewards = torch.FloatTensor(np.array(rewards))
+            next_states = torch.FloatTensor(np.array(next_states))
+            dones = torch.FloatTensor(np.array(dones))
 
-        states = torch.FloatTensor(states)
-        actions = torch.LongTensor(actions).unsqueeze(1)
-        rewards = torch.FloatTensor(rewards)
-        next_states = torch.FloatTensor(next_states)
-        dones = torch.FloatTensor(dones)
+            q_values = self.q_network(states).gather(1, actions).squeeze(1)
+            with torch.no_grad():
+                next_q_values = self.target_network(next_states).max(1)[0]
+                target_q_values = rewards + self.gamma * next_q_values * (1 - dones)
 
-        q_values = self.q_network(states).gather(1, actions).squeeze(1)
-        with torch.no_grad():
-            next_q_values = self.target_network(next_states).max(1)[0]
-            target_q_values = rewards + self.gamma * next_q_values * (1 - dones)
+            loss = nn.MSELoss()(q_values, target_q_values)
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
 
-        loss = nn.MSELoss()(q_values, target_q_values)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+        self.update_target_network()
 
     def save(self, path):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         torch.save(self.q_network.state_dict(), path)
 
     def load(self, path):
