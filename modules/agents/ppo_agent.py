@@ -49,12 +49,6 @@ class PPOAgent(Agent):
             if episode % 10 == 0:
                 self.model.learn()
 
-    def save(self, path):
-        self.model.save_models()
-
-    def load(self, path):
-        self.model.load_models(path)
-
     def get_action(self, board):
         action, _, _ = self.model.choose_action(
             board, action_mask=self.get_masked_actions(board)
@@ -63,3 +57,19 @@ class PPOAgent(Agent):
 
     def get_random_action(self, board, action_set):
         return action_set[np.random.randint(len(action_set))]
+
+    def policy(self, board, action_set):
+        engine = hexPosition(len(board))
+        engine.board = board
+        current_player = self.check_current_player(board)
+        action = None
+        coordinates = []
+        if current_player == 1:
+            action = self.get_action(board)
+            coordinates = engine.scalar_to_coordinates(action)
+        else:
+            action = self.get_action(engine.recode_black_as_white())
+            coordinates = engine.recode_coordinates(
+                engine.scalar_to_coordinates(action)
+            )
+        return coordinates

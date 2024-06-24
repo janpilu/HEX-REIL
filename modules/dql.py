@@ -137,29 +137,3 @@ class DQL:
 
     def load(self, path):
         self.q_network.load_state_dict(torch.load(path))
-
-
-# # Example usage
-# env = gym.make("CartPole-v1")
-# input_dims = env.observation_space.shape[0]
-# n_actions = env.action_space.n
-# agent = DQL(input_dims=input_dims, n_actions=n_actions)
-
-# num_episodes = 1000
-# for episode in range(num_episodes):
-#     state = env.reset()[0]
-#     done = False
-#     total_reward = 0
-
-#     while not done:
-#         action = agent.act(state)
-#         next_state, reward, done, *_ = env.step(action)
-#         agent.remember(state, action, reward, next_state, done)
-#         agent.learn()
-#         state = next_state
-#         total_reward += reward
-
-#     if episode % agent.target_update == 0:
-#         agent.update_target_network()
-
-#     print(f"Episode {episode}, Total Reward: {total_reward}")

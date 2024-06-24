@@ -6,7 +6,6 @@ from torch.optim import lr_scheduler
 import math
 import numpy as np
 import os
-from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 
@@ -148,12 +147,6 @@ class PPOActor(nn.Module):
         dist = self.fc2(features)
         return dist
 
-    def save_checkpoint(self):
-        torch.save(self.state_dict(), self.checkpoint_file)
-
-    def load_checkpoint(self):
-        self.load_state_dict(torch.load(self.checkpoint_file))
-
 
 class PPOCritic(nn.Module):
     def __init__(
@@ -201,12 +194,6 @@ class PPOCritic(nn.Module):
         value = self.fc2(features)
         return value
 
-    def save_checkpoint(self):
-        torch.save(self.state_dict(), self.checkpoint_file)
-
-    def load_checkpoint(self):
-        self.load_state_dict(torch.load(self.checkpoint_file))
-
 
 class PPO:
     def __init__(
@@ -230,6 +217,8 @@ class PPO:
         linear_increase_steps=4000,  # Number of steps for linear increase
         total_timesteps=20000,  # Total number of timesteps
         log_dir="logs",  # Directory to save logs
+        hidden_layers=2,
+        hidden_size=256,
     ):
         self.gamma = gamma
         self.policy_clip = policy_clip
@@ -278,9 +267,6 @@ class PPO:
             self.critic.optimizer, lr_lambda=self.lr_schedule
         )
 
-        # Tensorboard logging
-        self.writer = SummaryWriter(log_dir)
-
     def log_metrics(self, loss, actor_loss, critic_loss, entropy_loss, step):
         self.writer.add_scalar("loss/total_loss", loss.item(), step)
         self.writer.add_scalar("loss/actor_loss", actor_loss.item(), step)
@@ -319,15 +305,14 @@ class PPO:
     def remember(self, state, action, probs, values, reward, done):
         self.memory.store_memory(state, action, probs, values, reward, done)
 
-    def save_models(self):
-        print("... saving models ...")
-        self.actor.save_checkpoint()
-        self.critic.save_checkpoint()
+    def save(self, path):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        torch.save(self.actor.state_dict(), f"{path}-actor")
+        torch.save(self.critic.state_dict(), f"{path}-critic")
 
-    def load_models(self):
-        print("... loading models ...")
-        self.actor.load_checkpoint()
-        self.critic.load_checkpoint()
+    def load(self, path):
+        self.actor.load_state_dict(torch.load(f"{path}-actor"))
+        self.critic.load_state_dict(torch.load(f"{path}-critic"))
 
     def choose_action(self, observation, action_mask=None):
         state = torch.tensor([observation], dtype=torch.float32).to(self.device)
@@ -438,13 +423,6 @@ class PPO:
                 self.actor_scheduler.step()
                 self.critic_scheduler.step()
 
-                # self.log_metrics(
-                #     total_loss, actor_loss, critic_loss, entropy_loss, step
-                # )
-                # self.log_gradients(self.actor, step)
-                # self.log_gradients(self.critic, step)
-                # self.log_parameters(self.actor, step)
-                # self.log_parameters(self.critic, step)
                 step += 1
 
         self.memory.clear_memory()

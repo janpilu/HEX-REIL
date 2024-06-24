@@ -25,8 +25,16 @@ def get_sorted_models(folder_path):
     # Get all files in the directory
     files = os.listdir(folder_path)
 
-    # model_files = [f for f in files if f.endswith(extension)]
-    model_files = [f for f in files]
+    fixed_files = []
+
+    for file in files:
+        # Files that end with -actor -critic
+        suffix = file.split("-")[-1]
+        if suffix == "actor" or suffix == "critic":
+            file = file.replace(f"-{suffix}", "")
+        fixed_files.append(file)
+
+    model_files = list(set(fixed_files))
 
     # Sort the model files based on the timestamp in their name
     sorted_models = sorted(
