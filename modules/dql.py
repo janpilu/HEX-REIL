@@ -14,12 +14,27 @@ class QNetwork(nn.Module):
     ):
         super(QNetwork, self).__init__()
 
+        self.use_conv = use_conv
+        if use_conv:
+            self.conv = nn.Sequential(
+                nn.Conv2d(1, 16, kernel_size=3, stride=1, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+                nn.ReLU(),
+            )
+            # Calculate the size of the flattened feature map after convolutions
+            conv_out_size = input_dims[0] * input_dims[1] * 64
+        else:
+            conv_out_size = input_dims[0] * input_dims[1]
+
         self.fc = nn.Sequential(
             *itertools.chain.from_iterable(
                 [
                     [
                         (
-                            nn.Linear(input_dims[0] * input_dims[1], hidden_size)
+                            nn.Linear(conv_out_size, hidden_size)
                             if i == 0
                             else nn.Linear(hidden_size, hidden_size)
                         ),
@@ -32,9 +47,13 @@ class QNetwork(nn.Module):
         )
 
     def forward(self, state):
-        features = state.view(state.size(0), -1)
+        if self.use_conv:
+            state = state.unsqueeze(1)  # Add channel dimension
+            features = self.conv(state)
+            features = features.view(features.size(0), -1)  # Flatten the features
+        else:
+            features = state.view(state.size(0), -1)
         return self.fc(features)
-
 
 class DQL:
     def __init__(
