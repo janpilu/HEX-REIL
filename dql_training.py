@@ -162,13 +162,23 @@ def main(args):
                 # lambda board, _, __: evaluation_agent.get_action(board),
                 verbose=3,
             )
-            results_self = agent.evaluate_games(
-                2,
-                lambda board, _, __: evaluation_agent.get_action(board),
-                verbose=3,
-            )
+            results_self = None
+            if config.model == "ppo":
+                results_self = agent.evaluate_games(
+                    args.evaluation_steps,
+                    lambda board, _, __: evaluation_agent.get_action(board),
+                    verbose=3,
+                )
+            else:
+                results_self = agent.evaluate_games(
+                    2,
+                    lambda board, _, __: evaluation_agent.get_action(board),
+                    verbose=3,
+                )
 
             n_eval_games = args.number_of_policies * 2 + 2
+            if config.model == "ppo":
+                n_eval_games += args.evaluation_steps - 2
 
             results_total = {
                 "win_rate": (results["win_rate"] + results_self["win_rate"]) / 2,
@@ -183,7 +193,7 @@ def main(args):
 
             if (
                 results["black_wins"]
-                < number_of_runs * score * args.focus_threshold / 100
+                < n_eval_games * score * args.focus_threshold / 100
             ):
                 print(
                     f"Black wins less than {args.focus_threshold}% focus on black player"
@@ -191,7 +201,7 @@ def main(args):
                 agent.focus_on_player([-1])
             elif (
                 results["white_wins"]
-                < number_of_runs * score * args.focus_threshold / 100
+                < n_eval_games * score * args.focus_threshold / 100
             ):
                 print(
                     f"White wins less than {args.focus_threshold}% focus on white player"
