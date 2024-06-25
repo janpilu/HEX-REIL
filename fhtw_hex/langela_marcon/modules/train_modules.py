@@ -101,7 +101,7 @@ def get_opponent_policy(policies, model_files, number_of_policies=10):
 
 def get_agents(board_size, root_folder=None, as_path_agent_dict=False):
     if root_folder is None:
-        root_folder = f"./langela_marcon/models/{board_size}x{board_size}"
+        root_folder = f"./fhtw_hex/langela_marcon/models/{board_size}x{board_size}"
     os.makedirs(root_folder, exist_ok=True)
     env = HexEnv(size=board_size)
 

@@ -16,6 +16,103 @@ agent_class = DQLAgent if config.model == "dql" else PPOAgent
 
 def main(args):
 
+    # define the parser
+    parser = argparse.ArgumentParser(description="Training PPO Agent")
+
+    # Add argument for number of runs
+    parser.add_argument(
+        "-r", "--run_numbers", type=int, default=20, help="Number of runs"
+    )
+
+    # Add argument for board size
+    parser.add_argument(
+        "-b", "--board_size", type=int, default=7, help="Size of the board"
+    )
+
+    # Add argument for model
+    parser.add_argument("-m", "--model", type=str, default="ppo", help="Model to use")
+
+    # Add argument for training steps
+    parser.add_argument(
+        "-ts",
+        "--training_steps",
+        type=int,
+        default=1000,
+        help="Number of training steps",
+    )
+
+    # Add argument if training should be skipped
+    parser.add_argument(
+        "-st",
+        "--skip_training",
+        default=False,
+        help="Skip training",
+        action="store_true",
+    )
+
+    # Add argument for evaluation steps
+    parser.add_argument(
+        "-es",
+        "--evaluation_steps",
+        type=int,
+        default=200,
+        help="Number of evaluation steps",
+    )
+
+    # Add argument for evaluation steps
+    parser.add_argument(
+        "-et",
+        "--evaluation_threshold",
+        type=int,
+        default=65,
+        help="Percent to reach before stopping training",
+    )
+
+    # Add argument for resampling threshold
+    parser.add_argument(
+        "-rt",
+        "--lr_update_threshold",
+        type=int,
+        default=4,
+        help="Number of training rounds before resampling opponent policy",
+    )
+
+    # Add argument if agent should play against random
+    parser.add_argument(
+        "-ar",
+        "--against_random",
+        default=False,
+        action="store_true",
+        help="Play against random",
+    )
+
+    parser.add_argument(
+        "-d",
+        "--debug",
+        default=True,
+        action="store_true",
+        help="Debug flag",
+    )
+
+    parser.add_argument(
+        "-np",
+        "--number_of_policies",
+        type=int,
+        default=10,
+        help="Number of policies to use",
+    )
+
+    parser.add_argument(
+        "-ft",
+        "--focus_threshold",
+        type=int,
+        default=30,
+        help="Threshold for focusing on player",
+    )
+
+    # parse the arguments
+    args = parser.parse_args()
+
     number_of_runs = args.run_numbers
 
     for run_number in range(number_of_runs):
@@ -30,11 +127,11 @@ def main(args):
         model = config.model
 
         # main folder for models
-        os.makedirs("./langela_marcon/models", exist_ok=True)
+        os.makedirs("./fhtw_hex/langela_marcon/models", exist_ok=True)
 
         conv_flag = "conv" if config.use_conv else "fc"
 
-        model_folder = f"./langela_marcon/models/{board_size}x{board_size}/{config.model}/{config.hidden_layers}_{config.hidden_size}_{conv_flag}"
+        model_folder = f"./fhtw_hex/langela_marcon/models/{board_size}x{board_size}/{config.model}/{config.hidden_layers}_{config.hidden_size}_{conv_flag}"
         os.makedirs(model_folder, exist_ok=True)
 
         model_path = f"{model_folder}/{timestamp}_{model}"

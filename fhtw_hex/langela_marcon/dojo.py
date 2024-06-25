@@ -25,7 +25,7 @@ def train_group(src, tgt, board_size):
         for path, agent in agent_dict.items():
             done = False
             round = 0
-            agent_dir = f'./langela_marcon/models/{board_size}x{board_size}/{tgt}/{group}/{path.split("/")[-3]}/{path.split("/")[-2]}'
+            agent_dir = f'./fhtw_hex/langela_marcon/models/{board_size}x{board_size}/{tgt}/{group}/{path.split("/")[-3]}/{path.split("/")[-2]}'
             agent_path = f'{agent_dir}/{path.split("/")[-1]}'
             best_score = 0
             new_score = 0
@@ -70,4 +70,4 @@ def train_group(src, tgt, board_size):
                     agent.save(f"{agent_path}-failed")
                 round += 1
 
-        src = f"./langela_marcon/models/{board_size}x{board_size}/{tgt}/{group}"
+        src = f"./fhtw_hex/langela_marcon/models/{board_size}x{board_size}/{tgt}/{group}"
