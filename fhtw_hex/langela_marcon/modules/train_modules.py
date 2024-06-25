@@ -122,7 +122,7 @@ def get_agents(board_size, root_folder=None, as_path_agent_dict=False):
         agents[model] = {}
 
         for architecture_folder in os.listdir(model_folder):
-            print(architecture_folder)
+
             architectre_path = f"{model_folder}/{architecture_folder}"
             if os.path.isdir(architectre_path):
                 layers, size, architectre = architecture_folder.split("_")
@@ -138,6 +138,9 @@ def get_agents(board_size, root_folder=None, as_path_agent_dict=False):
                     fixed_files = []
 
                     for file in files:
+                        # Ignore files with checkpoint in the name
+                        if "checkpoint" in file:
+                            continue
                         # Files that end with -actor -critic
                         suffix = file.split("-")[-1]
                         if suffix == "actor" or suffix == "critic":

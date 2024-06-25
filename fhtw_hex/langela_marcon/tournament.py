@@ -1,4 +1,6 @@
 import os
+
+from tqdm import tqdm
 from .modules.train_modules import get_agents
 from .fhtw_hex.hex_engine import hexPosition
 import pandas as pd
@@ -64,13 +66,42 @@ def score_to_df(score):
     return summary_df
 
 
-def tournament(board_size):
+def merge_agent_dicts(agents1, agents2):
+    for model, architectures in agents2.items():
+        if model not in agents1:
+            agents1[model] = architectures
+        else:
+            for architecture, agent_datas in architectures.items():
+                if architecture not in agents1[model]:
+                    agents1[model][architecture] = agent_datas
+                else:
+                    agents1[model][architecture].extend(agent_datas)
+    return agents1
+
+
+def tournament(board_size, include_dojo=False):
     agents = get_agents(board_size)
+
+    if include_dojo:
+        dojo_dir = f"./fhtw_hex/langela_marcon/models/{board_size}x{board_size}/dojo"
+        for level in os.listdir(dojo_dir):
+            if not os.path.isdir(f"{dojo_dir}/{level}"):
+                continue
+            level_agents = get_agents(board_size, f"{dojo_dir}/{level}")
+            agents = merge_agent_dicts(agents, level_agents)
+
     agent_path_map = {}
     all_results = []
-    for model, architectures in agents.items():
-        for architecture, agent_datas in architectures.items():
-            for agent_data in agent_datas:
+    for model, architectures in tqdm(agents.items(), desc="Tournament", position=0):
+        for architecture, agent_datas in tqdm(
+            architectures.items(),
+            desc="Evaluating architectures",
+            position=1,
+            leave=False,
+        ):
+            for agent_data in tqdm(
+                agent_datas, desc="Evaluating agents", position=2, leave=False
+            ):
                 agent = agent_data["agent"]
                 agent_path = agent_data["path"]
                 agent_path_map[agent_path] = agent
@@ -84,19 +115,19 @@ def tournament(board_size):
     return summary_df
 
 
-def save_best_models(summary_df, agents_path_map):
-    # Get the best 3 models for each category (total wins, white wins, black wins) without duplicates
+def save_best_models(summary_df, agents_path_map, top=4, board_size=7):
+    # Get the best X models for each category (total wins, white wins, black wins) without duplicates
     summary_df.sort_values("total_wins", ascending=False, inplace=True)
-    best_models = summary_df.head(3)
-    # copy excluding the head 3
-    summary_df = summary_df.tail(-3)
+    best_models = summary_df.head(top)
+
+    summary_df = summary_df.tail(-top)
 
     summary_df.sort_values("white", ascending=False, inplace=True)
-    best_white_models = summary_df.head(3)
-    summary_df = summary_df.tail(-3)
+    best_white_models = summary_df.head(top)
+    summary_df = summary_df.tail(-top)
 
     summary_df.sort_values("black", ascending=False, inplace=True)
-    best_black_models = summary_df.head(3)
+    best_black_models = summary_df.head(top)
 
     best_merge = pd.concat([best_models, best_white_models, best_black_models])
     print(best_merge)
@@ -105,7 +136,7 @@ def save_best_models(summary_df, agents_path_map):
     for index, row in best_merge.iterrows():
         agent_path = row["agent_path"]
         agent = agents_path_map[agent_path]
-        agent_dir = f'models/{agent_path.split("/")[-4]}/winner/{agent_path.split("/")[-3]}/{agent_path.split("/")[-2]}'
+        agent_dir = f'./fhtw_hex/langela_marcon/models/{board_size}x{board_size}/winner/{agent_path.split("/")[-3]}/{agent_path.split("/")[-2]}'
         agent_path = f'{agent_dir}/{agent_path.split("/")[-1]}'
 
         os.makedirs(agent_dir, exist_ok=True)
