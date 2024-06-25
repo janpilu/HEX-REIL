@@ -134,7 +134,20 @@ def get_agents(board_size, root_folder=None, as_path_agent_dict=False):
                 agents[model][architecture_folder] = []
 
                 if agent_class is not None:
-                    for model_file in os.listdir(architectre_path):
+                    files = os.listdir(architectre_path)
+
+                    fixed_files = []
+
+                    for file in files:
+                        # Files that end with -actor -critic
+                        suffix = file.split("-")[-1]
+                        if suffix == "actor" or suffix == "critic":
+                            file = file.replace(f"-{suffix}", "")
+                        fixed_files.append(file)
+
+                    model_files = list(set(fixed_files))
+
+                    for model_file in model_files:
                         agent = agent_class(
                             hidden_layers=hidden_layers,
                             hidden_size=hidden_size,
