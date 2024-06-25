@@ -1,5 +1,5 @@
 models = ["dql", "ppo"]
-model = "ppo"
-hidden_layers = 2
+model = "dql"
+hidden_layers = 3
 hidden_size = 256
-use_conv = False
+use_conv = True
