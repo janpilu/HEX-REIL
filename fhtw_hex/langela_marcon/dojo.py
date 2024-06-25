@@ -29,6 +29,7 @@ def train_group(src, tgt, board_size):
             agent_path = f'{agent_dir}/{path.split("/")[-1]}'
             best_score = 0
             new_score = 0
+            print(f"Training agent {path}")
             while not done:
 
                 agent.env.opponent_policy = policy
@@ -45,6 +46,14 @@ def train_group(src, tgt, board_size):
 
                 score_df = pd.concat([score_df, summary_df])
                 new_score = score_df["total_wins"].max()
+                print(f"New score: {new_score}")
+                
+                if new_score > len(policies) * 1.2:
+                    print("Saving model")
+
+                    done = True
+                    agent.save(f"{agent_path}-{new_score}-group-{group}")
+                    continue
 
                 if new_score > best_score:
                     print("New score is better than previous score")
@@ -57,11 +66,6 @@ def train_group(src, tgt, board_size):
                         os.remove(f"{agent_dir}/checkpoint")
                     agent.save(f"{agent_dir}/checkpoint")
 
-                if new_score > len(policies) * 1.2:
-                    print("Saving model")
-
-                    done = True
-                    agent.save(f"{agent_path}-{new_score}-group-{group}")
 
                 if round > 25:
                     print("Failed to train model")
