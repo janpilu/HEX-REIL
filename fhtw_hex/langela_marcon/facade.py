@@ -7,7 +7,7 @@ from .modules.agents.ppo_agent import PPOAgent
 
 
 def agent(board, action_set):
-    agent_dir = "./langela_marcon/models/7x7/winner"
+    agent_dir = "./fhtw_hex/langela_marcon/models/7x7/winner"
     agent = None
     for model in os.listdir(agent_dir):
         model_folder = f"{agent_dir}/{model}"

@@ -28,9 +28,9 @@ def main(args):
         model = args.model
 
         # main folder for models
-        os.makedirs("./langela_marcon/models", exist_ok=True)
+        os.makedirs("./fhtw_hex/langela_marcon/models", exist_ok=True)
 
-        model_folder = f"./langela_marcon/models/{board_size}x{board_size}"
+        model_folder = f"./fhtw_hex/langela_marcon/models/{board_size}x{board_size}"
         os.makedirs(model_folder, exist_ok=True)
 
         model_path = f"{model_folder}/{timestamp}_{model}"

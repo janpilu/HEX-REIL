@@ -30,11 +30,11 @@ def main(args):
         model = config.model
 
         # main folder for models
-        os.makedirs("./langela_marcon/models", exist_ok=True)
+        os.makedirs("./fhtw_hex/langela_marcon/models", exist_ok=True)
 
         conv_flag = "conv" if config.use_conv else "fc"
 
-        model_folder = f"./langela_marcon/models/{board_size}x{board_size}/{config.model}/{config.hidden_layers}_{config.hidden_size}_{conv_flag}"
+        model_folder = f"./fhtw_hex/langela_marcon/models/{board_size}x{board_size}/{config.model}/{config.hidden_layers}_{config.hidden_size}_{conv_flag}"
         os.makedirs(model_folder, exist_ok=True)
 
         model_path = f"{model_folder}/{timestamp}_{model}"
