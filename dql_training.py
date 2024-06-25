@@ -34,7 +34,7 @@ def main(args):
 
         # assign the arguments to the variables
         board_size = args.board_size
-        model = args.model
+        model = config.model
 
         # main folder for models
         os.makedirs("./models", exist_ok=True)
@@ -157,7 +157,7 @@ def main(args):
             print(f"Evaluating model against most recent model ({most_recent_model})")
             agent.focus_on_player([1, -1])
             results = agent.evaluate_games(
-                args.number_of_policies * 2,
+                args.number_of_policies * 20,
                 # args.evaluation_steps,
                 # lambda board, _, __: evaluation_agent.get_action(board),
                 verbose=3,
@@ -176,7 +176,7 @@ def main(args):
                     verbose=3,
                 )
 
-            n_eval_games = args.number_of_policies * 2 + 2
+            n_eval_games = args.number_of_policies * 20 + 2
             if config.model == "ppo":
                 n_eval_games += args.evaluation_steps - 2
 

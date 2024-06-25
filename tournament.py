@@ -116,11 +116,23 @@ def save_best_models(summary_df, agents_path_map):
     print("Best models saved!")
 
 
-# tournament_df = tournament(7)
-# # delete models with a total win less than 100
+if __name__ == "__main__":
+    tournament_df = tournament(7)
+    print(tournament_df.head())
+    print(tournament_df.tail())
 
-# paths = tournament_df[tournament_df["total_wins"] < 100]["agent_path"]
+    # print(tournament_df["total_wins"].mean())
+    # print(tournament_df["total_wins"].median())
+    # delete models with a total win less than 100
 
-# for path in paths:
-#     os.remove(path)
-#     print(f"Deleted {path}")
+    # paths = tournament_df[tournament_df["total_wins"] < 100]["agent_path"]
+
+    # for path in paths:
+    #     if path.split("/")[3] == "ppo":
+    #         os.remove(f"{path}-actor")
+    #         os.remove(f"{path}-critic")
+    #         print(f"Deleted {path}-actor")
+    #         print(f"Deleted {path}-critic")
+    #     else:
+    #         os.remove(path)
+    #         print(f"Deleted {path}")
