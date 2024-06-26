@@ -19,3 +19,5 @@ for path in paths:
     else:
         os.remove(path)
         print(f"Deleted {path}")
+
+tournament_df.to_csv("tournament_results.csv", index=False)

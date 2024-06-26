@@ -67,7 +67,7 @@ def train_group(src, tgt, board_size):
                     agent.save(f"{agent_dir}/checkpoint")
 
 
-                if round > 25:
+                if round > 17:
                     print("Failed to train model")
                     done = True
                     agent.load(f"{agent_dir}/checkpoint")

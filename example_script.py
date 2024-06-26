@@ -18,9 +18,13 @@ from fhtw_hex.langela_marcon.facade import agent
 # make sure that the agent you have provided is such that the following three
 # method-calls are error-free and as expected
 
-# let your agent play against random
-game.machine_vs_machine(machine1=agent, machine2=None)
-game.machine_vs_machine(machine1=None, machine2=agent)
+# # let your agent play against random
+# game.machine_vs_machine(machine1=agent, machine2=None)
+# game.machine_vs_machine(machine1=None, machine2=agent)
 
-# let your agent play against itself
-game.machine_vs_machine(machine1=agent, machine2=agent)
+# # let your agent play against itself
+# game.machine_vs_machine(machine1=agent, machine2=agent)
+
+
+game.human_vs_machine(1,agent)
+
